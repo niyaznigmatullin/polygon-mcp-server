@@ -1,0 +1,3 @@
+polygon_api==1.1.0a1
+fastmcp<3
+patch-ng
