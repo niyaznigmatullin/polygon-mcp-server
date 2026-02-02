@@ -9,6 +9,20 @@ MCP server for Polygon API (Codeforces Polygon).
 
 ## Install
 
+### From PyPI repository
+
+```bash
+pip install polygon-mcp-server
+```
+
+With uv:
+
+```bash
+uv pip install polygon-mcp-server
+```
+
+### From the sources
+
 Install the package (adds the `polygon-mcp` CLI):
 
 ```bash
