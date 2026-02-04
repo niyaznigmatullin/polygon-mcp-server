@@ -815,6 +815,8 @@ def problem_tests(
     If input_line_limit is set, returned test inputs are truncated to the first N lines.
     If examples_only is true, only tests with use_in_statements=true are returned.
     """
+    if no_inputs is not True:
+        raise ValueError("problem_tests requires no_inputs=true; use problem_test_input to fetch test input")
     polygon = _get_client()
     result = _call_polygon(polygon.problem_tests, problem_id, testset, no_inputs=no_inputs)
     data = _to_jsonable(result)
