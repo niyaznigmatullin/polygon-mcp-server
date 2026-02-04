@@ -242,9 +242,14 @@ def _resolve_output_path(path: str) -> str:
     return abs_path
 
 
-def _slice_lines(text: str, start_line: Optional[int], line_count: Optional[int]) -> str:
+def _slice_lines(text: str | bytes, start_line: Optional[int], line_count: Optional[int]) -> str | bytes:
     if start_line is None and line_count is None:
         return text
+    if isinstance(text, (bytes, bytearray)):
+        try:
+            text = text.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ValueError("Line slicing is supported only for UTF-8 files") from exc
     if start_line is None:
         start_line = 1
     if start_line < 1:
