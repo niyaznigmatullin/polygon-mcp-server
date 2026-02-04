@@ -758,20 +758,33 @@ def problem_view_solution(
 def problem_save_solution(
     problem_id: int,
     name: str,
-    source_type: str,
-    tag: str,
+    source_type: Optional[str] = None,
+    tag: Optional[str] = None,
     content: Optional[str] = None,
     content_base64: bool = False,
     local_path: Optional[str] = None,
     check_existing: Optional[bool] = None,
 ) -> Any:
+    """Add or edit a solution.
+
+    For edits, all parameters except problem_id and name are optional.
+
+    Parameters:
+        check_existing: if true, only adding solutions is allowed
+        name: solution name
+        content/local_path: solution content (file), mutually exclusive
+        source_type: source type
+        tag: solution tag (MA - Main, OK - Accepted, RJ - Rejected, TL - Time Limit, TO - Time Limit Exceeded or Accepted, WA - Wrong Answer, PE - Presentation Error, ML - Memory Limit, RE - Runtime Error)
+    """
     polygon = _get_client()
+    if local_path and content is not None:
+        raise ValueError("content and local_path are mutually exclusive")
     if local_path:
         file_value = _read_local_file(local_path)
-    else:
-        if content is None:
-            raise ValueError("content or local_path is required")
+    elif content is not None:
         file_value = _decode_content(content, content_base64)
+    else:
+        file_value = None
     result = _call_polygon(
         polygon.problem_save_solution,
         problem_id,
