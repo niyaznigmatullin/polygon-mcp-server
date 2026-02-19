@@ -644,6 +644,19 @@ def problem_save_file(
     source_type: Optional[str] = None,
     resource_advanced_properties: Optional[dict] = None,
 ) -> Any:
+    """Add or edit a file (source, resource, attachment, etc.).
+
+    For edits, all parameters except problem_id, type and name are optional.
+
+    Parameters:
+        problem_id: problem ID
+        type: file type (source, resource, attachment, etc.)
+        name: file name
+        content/local_path: file content, mutually exclusive; required when adding a new file
+        content_base64: if true, content is base64-encoded (for binary files)
+        source_type: source type (e.g. cpp.g++17, python.3, java.8); only for source files
+        resource_advanced_properties: advanced properties for resource files
+    """
     polygon = _get_client()
     file_type = _parse_file_type(type)
     if local_path:
