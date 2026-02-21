@@ -943,6 +943,72 @@ def problem_save_test(
 
 
 @mcp.tool()
+def problem_script(problem_id: int, testset: str) -> Any:
+    """Get the test generation script for a testset.
+
+    The script uses Freemarker-like syntax and references generators (source files)
+    to produce tests. Each non-empty line in the script corresponds to a generated test.
+    """
+    polygon = _get_client()
+    data = _call_polygon(polygon.problem_script, problem_id, testset)
+    return {"data": data}
+
+
+@mcp.tool()
+def problem_save_script(problem_id: int, testset: str, source: str) -> Any:
+    """Save or update the test generation script for a testset.
+
+    The source is the full script content. Each non-empty line typically calls
+    a generator, e.g. 'gen 10 20 > $' or uses Freemarker syntax.
+    """
+    polygon = _get_client()
+    result = _call_polygon(polygon.problem_save_script, problem_id, testset, source)
+    return _to_jsonable(result)
+
+
+@mcp.tool()
+def problem_patch_script(problem_id: int, testset: str, patch: str) -> Any:
+    """Apply a unified diff patch to the test generation script and save it back.
+
+    The server reads the current script, applies the patch, and saves the updated script.
+    """
+    polygon = _get_client()
+    current = _call_polygon(polygon.problem_script, problem_id, testset) or ""
+    updated = _apply_unified_diff(current, patch)
+    if updated == current:
+        raise ValueError("Patch did not change script content")
+    result = _call_polygon(polygon.problem_save_script, problem_id, testset, updated)
+    return _to_jsonable(result)
+
+
+@mcp.tool()
+def problem_set_test_group(
+    problem_id: int,
+    testset: str,
+    test_group: str,
+    test_index: Optional[int] = None,
+    test_indices: Optional[list[int]] = None,
+) -> Any:
+    """Assign tests to a test group.
+
+    Use test_index for a single test or test_indices for multiple tests.
+    At least one of test_index or test_indices must be provided.
+    """
+    if test_index is None and test_indices is None:
+        raise ValueError("At least one of test_index or test_indices must be provided")
+    polygon = _get_client()
+    result = _call_polygon(
+        polygon.problem_set_test_group,
+        problem_id,
+        testset,
+        test_group,
+        test_index=test_index,
+        test_indices=test_indices,
+    )
+    return _to_jsonable(result)
+
+
+@mcp.tool()
 def problem_enable_groups(problem_id: int, testset: str, enable: bool) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_enable_groups, problem_id, testset, enable)
