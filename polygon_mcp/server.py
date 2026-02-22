@@ -430,7 +430,7 @@ def problem_update_info(
     input_file: Optional[str] = None,
     output_file: Optional[str] = None,
     interactive: Optional[bool] = None,
-    time_limit: Optional[float] = None,
+    time_limit: Optional[int] = None,
     memory_limit: Optional[int] = None,
 ) -> Any:
     polygon = _get_client()
