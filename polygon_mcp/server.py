@@ -3,6 +3,7 @@ import io
 import json
 import os
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
 from enum import Enum
 from typing import Any, Optional
@@ -34,28 +35,57 @@ DEFAULT_CONFIG_PATH = os.path.join(
 
 mcp = FastMCP("polygon")
 
-_LOGGER = logging.getLogger("polygon_mcp")
-if not _LOGGER.handlers:
-    _formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+def _warn_stderr(message: str) -> None:
+    try:
+        sys.stderr.write(f"{message}\n")
+        sys.stderr.flush()
+    except Exception:
+        pass
+
+
+def _configure_logger() -> logging.Logger:
+    logger = logging.getLogger("polygon_mcp")
+    if logger.handlers:
+        return logger
+
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
     log_path = os.getenv("POLYGON_MCP_LOG_FILE")
     if not log_path:
         state_home = os.getenv("XDG_STATE_HOME") or os.path.join(
             os.path.expanduser("~"), ".local", "state"
         )
         log_path = os.path.join(state_home, "polygon-mcp", "polygon-mcp.log")
-    log_dir = os.path.dirname(log_path)
-    if log_dir:
-        os.makedirs(log_dir, exist_ok=True)
+
     try:
+        log_dir = os.path.dirname(log_path)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
         with open(log_path, "a", encoding="utf-8"):
             pass
-        os.chmod(log_path, 0o600)
-    except OSError:
-        pass
-    _handler = RotatingFileHandler(log_path, maxBytes=5 * 1024 * 1024, backupCount=5)
-    _handler.setFormatter(_formatter)
-    _LOGGER.addHandler(_handler)
-_LOGGER.setLevel(logging.INFO)
+        try:
+            os.chmod(log_path, 0o600)
+        except OSError:
+            pass
+        handler = RotatingFileHandler(
+            log_path,
+            maxBytes=5 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
+        )
+        handler.setFormatter(formatter)
+    except OSError as exc:
+        _warn_stderr(
+            f"polygon-mcp warning: failed to open log file '{log_path}': {exc}"
+        )
+        handler = logging.NullHandler()
+
+    logger.addHandler(handler)
+    return logger
+
+
+_LOGGER = _configure_logger()
 
 
 def _to_jsonable(value: Any) -> Any:
