@@ -1,7 +1,13 @@
 import base64
 import unittest
 
-from polygon_mcp.server import MAX_FILE_CHARS, MAX_FILE_LINES, _file_content_response
+from polygon_mcp.server import (
+    MAX_FILE_CHARS,
+    MAX_FILE_LINES,
+    MAX_FILE_SEARCH_MATCHES,
+    _file_content_response,
+    _search_file_content,
+)
 
 
 class FileContentResponseTests(unittest.TestCase):
@@ -46,6 +52,53 @@ class FileContentResponseTests(unittest.TestCase):
         self.assertEqual(result["data"], "é" * MAX_FILE_CHARS)
         self.assertTrue(result["truncated"])
         self.assertIn("smaller line_count", result["message"])
+
+
+class SearchFileContentTests(unittest.TestCase):
+    def test_returns_matching_lines_with_context(self) -> None:
+        data = "zero\none\nneedle here\nthree\nfour\n"
+
+        result = _search_file_content(data, "needle", before=1, after=2)
+
+        self.assertEqual(result["total_matches"], 1)
+        self.assertEqual(result["returned_matches"], 1)
+        match = result["matches"][0]
+        self.assertEqual(match["line_number"], 3)
+        self.assertEqual(match["line"], "needle here")
+        self.assertEqual(match["before"], [{"line_number": 2, "text": "one"}])
+        self.assertEqual(
+            match["after"],
+            [
+                {"line_number": 4, "text": "three"},
+                {"line_number": 5, "text": "four"},
+            ],
+        )
+
+    def test_search_requires_utf8(self) -> None:
+        with self.assertRaisesRegex(ValueError, "cannot be searched"):
+            _search_file_content(b"\xff", "needle")
+
+    def test_limits_number_of_matches(self) -> None:
+        data = "\n".join("needle" for _ in range(MAX_FILE_SEARCH_MATCHES + 1))
+
+        result = _search_file_content(data, "needle", before=0, after=0)
+
+        self.assertEqual(result["total_matches"], MAX_FILE_SEARCH_MATCHES + 1)
+        self.assertEqual(result["returned_matches"], MAX_FILE_SEARCH_MATCHES)
+        self.assertTrue(result["truncated"])
+
+    def test_rejects_context_that_can_exceed_line_limit(self) -> None:
+        with self.assertRaisesRegex(ValueError, f"{MAX_FILE_LINES} lines"):
+            _search_file_content("needle", "needle", before=25, after=0)
+
+    def test_character_limit_counts_unicode_characters(self) -> None:
+        data = "needle " + "é" * MAX_FILE_CHARS
+
+        result = _search_file_content(data, "needle", before=0, after=0)
+
+        self.assertEqual(len(result["matches"][0]["line"]), MAX_FILE_CHARS)
+        self.assertTrue(result["truncated"])
+        self.assertIn(str(MAX_FILE_CHARS), result["message"])
 
 
 if __name__ == "__main__":
