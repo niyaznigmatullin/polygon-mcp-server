@@ -35,6 +35,8 @@ DEFAULT_CONFIG_PATH = os.path.join(
 mcp = FastMCP("polygon")
 
 READ_ONLY_TOOL_ANNOTATIONS = {"readOnlyHint": True}
+MAX_FILE_LINES = 500
+MAX_FILE_CHARS = 12_000
 
 _LOGGER = logging.getLogger("polygon_mcp")
 if not _LOGGER.handlers:
@@ -244,24 +246,72 @@ def _resolve_output_path(path: str) -> str:
     return abs_path
 
 
-def _slice_lines(text: str | bytes, start_line: Optional[int], line_count: Optional[int]) -> str | bytes:
-    if start_line is None and line_count is None:
-        return text
-    if isinstance(text, (bytes, bytearray)):
+def _decode_file_content(data: str | bytes) -> str:
+    if isinstance(data, str):
+        return data
+    if isinstance(data, (bytes, bytearray)):
         try:
-            text = text.decode("utf-8")
+            return bytes(data).decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise ValueError("Line slicing is supported only for UTF-8 files") from exc
+            raise ValueError(
+                "File is not valid UTF-8; rerun with binary=true to receive base64-encoded content"
+            ) from exc
+    raise TypeError(f"Unsupported file content type: {type(data).__name__}")
+
+
+def _file_content_response(
+    data: str | bytes,
+    start_line: Optional[int] = None,
+    line_count: Optional[int] = None,
+    binary: bool = False,
+) -> dict[str, Any]:
+    if binary:
+        if start_line is not None or line_count is not None:
+            raise ValueError("start_line and line_count cannot be used with binary=true")
+        raw = data.encode("utf-8") if isinstance(data, str) else bytes(data)
+        return {
+            "data": base64.b64encode(raw).decode("ascii"),
+            "encoding": "base64",
+        }
+
+    text = _decode_file_content(data)
     if start_line is None:
         start_line = 1
     if start_line < 1:
         raise ValueError("start_line must be >= 1")
     if line_count is not None and line_count < 0:
         raise ValueError("line_count must be >= 0")
+    if line_count is not None and line_count > MAX_FILE_LINES:
+        raise ValueError(f"line_count must be <= {MAX_FILE_LINES}")
+
+    effective_line_count = MAX_FILE_LINES if line_count is None else line_count
     lines = text.splitlines(keepends=True)
     start_index = start_line - 1
-    end_index = None if line_count is None else start_index + line_count
-    return "".join(lines[start_index:end_index])
+    end_index = start_index + effective_line_count
+    selected_lines = lines[start_index:end_index]
+    selected_text = "".join(selected_lines)
+    has_more_lines = end_index < len(lines)
+    exceeds_char_limit = len(selected_text) > MAX_FILE_CHARS
+
+    response: dict[str, Any] = {
+        "data": selected_text[:MAX_FILE_CHARS],
+        "encoding": "utf-8",
+    }
+    if has_more_lines or exceeds_char_limit:
+        response["truncated"] = True
+        if exceeds_char_limit:
+            response["message"] = (
+                f"Content exceeds {MAX_FILE_CHARS} characters; returned the first "
+                f"{MAX_FILE_CHARS} characters. Retry with a smaller line_count and paginate "
+                "with start_line."
+            )
+        else:
+            response["next_start_line"] = start_line + len(selected_lines)
+            response["message"] = (
+                f"Returned at most {MAX_FILE_LINES} lines. Continue with "
+                f"start_line={response['next_start_line']}."
+            )
+    return response
 
 
 def _apply_line_edit(text: str, start_line: int, line_count: int, replacement: str) -> str:
@@ -627,12 +677,18 @@ def problem_view_file(
     name: str,
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
+    binary: bool = False,
 ) -> Any:
+    """Read a problem file with bounded line pagination.
+
+    Text must be valid UTF-8. At most 500 lines and 12,000 characters are
+    returned per call. Set binary=true to receive the entire file as base64;
+    line pagination is unavailable in binary mode.
+    """
     polygon = _get_client()
     file_type = _parse_file_type(type)
     data = _call_polygon(polygon.problem_view_file, problem_id, file_type, name)
-    data = _slice_lines(data, start_line, line_count)
-    return {"data": data, "encoding": "utf-8"}
+    return _file_content_response(data, start_line, line_count, binary)
 
 
 @mcp.tool()
@@ -762,11 +818,17 @@ def problem_view_solution(
     name: str,
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
+    binary: bool = False,
 ) -> Any:
+    """Read a solution with bounded line pagination.
+
+    Text must be valid UTF-8. At most 500 lines and 12,000 characters are
+    returned per call. Set binary=true to receive the entire file as base64;
+    line pagination is unavailable in binary mode.
+    """
     polygon = _get_client()
     data = _call_polygon(polygon.problem_view_solution, problem_id, name)
-    data = _slice_lines(data, start_line, line_count)
-    return {"data": data, "encoding": "utf-8"}
+    return _file_content_response(data, start_line, line_count, binary)
 
 
 @mcp.tool()
@@ -865,19 +927,28 @@ def problem_test_answer(
     testset: str,
     test_index: int,
     output_path: Optional[str] = None,
+    start_line: Optional[int] = None,
+    line_count: Optional[int] = None,
+    binary: bool = False,
 ) -> Any:
     """Get generated test answer for a test.
 
     If output_path is provided, the result is written to a local file.
+    Otherwise text must be valid UTF-8 and is limited to 500 lines and 12,000
+    characters. Set binary=true to receive the entire answer as base64.
     """
     polygon = _get_client()
     data = _call_polygon(polygon.problem_test_answer, problem_id, testset, test_index)
     if output_path:
+        if start_line is not None or line_count is not None or binary:
+            raise ValueError(
+                "start_line, line_count, and binary cannot be used with output_path"
+            )
         path = _resolve_output_path(output_path)
         with open(path, "wb") as handle:
             handle.write(data.encode("utf-8") if isinstance(data, str) else data)
         return {"saved_to": path}
-    return {"data": data, "encoding": "utf-8"}
+    return _file_content_response(data, start_line, line_count, binary)
 
 
 @mcp.tool()
@@ -886,19 +957,28 @@ def problem_test_input(
     testset: str,
     test_index: int,
     output_path: Optional[str] = None,
+    start_line: Optional[int] = None,
+    line_count: Optional[int] = None,
+    binary: bool = False,
 ) -> Any:
     """Get generated test input for a test.
 
     If output_path is provided, the result is written to a local file.
+    Otherwise text must be valid UTF-8 and is limited to 500 lines and 12,000
+    characters. Set binary=true to receive the entire input as base64.
     """
     polygon = _get_client()
     data = _call_polygon(polygon.problem_test_input, problem_id, testset, test_index)
     if output_path:
+        if start_line is not None or line_count is not None or binary:
+            raise ValueError(
+                "start_line, line_count, and binary cannot be used with output_path"
+            )
         path = _resolve_output_path(output_path)
         with open(path, "wb") as handle:
             handle.write(data.encode("utf-8") if isinstance(data, str) else data)
         return {"saved_to": path}
-    return {"data": data, "encoding": "utf-8"}
+    return _file_content_response(data, start_line, line_count, binary)
 
 
 @mcp.tool()
