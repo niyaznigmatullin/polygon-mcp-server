@@ -34,6 +34,8 @@ DEFAULT_CONFIG_PATH = os.path.join(
 
 mcp = FastMCP("polygon")
 
+READ_ONLY_TOOL_ANNOTATIONS = {"readOnlyHint": True}
+
 _LOGGER = logging.getLogger("polygon_mcp")
 if not _LOGGER.handlers:
     _formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
@@ -398,7 +400,7 @@ def _resource_adv_from_dict(data: Optional[dict]) -> Optional[ResourceAdvancedPr
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problems_list(
     show_deleted: Optional[bool] = None,
     id: Optional[int] = None,
@@ -410,7 +412,7 @@ def problems_list(
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_info(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_info, problem_id)
@@ -475,7 +477,7 @@ def problem_commit_changes(
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_statements(
     problem_id: int,
     lang: Optional[str] = None,
@@ -536,7 +538,7 @@ def problem_save_statement(
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_statement_resources(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_statement_resources, problem_id)
@@ -569,21 +571,21 @@ def problem_save_statement_resource(
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_checker(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_checker, problem_id)
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_validator(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_validator, problem_id)
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_interactor(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_interactor, problem_id)
@@ -611,14 +613,14 @@ def problem_set_interactor(problem_id: int, interactor: str) -> Any:
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_files(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_files, problem_id)
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_view_file(
     problem_id: int,
     type: str,
@@ -747,14 +749,14 @@ def problem_patch_statement(
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_solutions(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_solutions, problem_id)
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_view_solution(
     problem_id: int,
     name: str,
@@ -810,7 +812,7 @@ def problem_save_solution(
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_tests(
     problem_id: int,
     testset: str,
@@ -942,7 +944,7 @@ def problem_save_test(
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_script(problem_id: int, testset: str) -> Any:
     """Get the test generation script for a testset.
 
@@ -1022,7 +1024,7 @@ def problem_enable_points(problem_id: int, enable: bool) -> Any:
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_view_test_group(testset: str, group: str) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_view_test_group, testset, group)
@@ -1058,7 +1060,7 @@ def problem_save_test_group(
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_view_tags(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_view_tags, problem_id)
@@ -1072,7 +1074,7 @@ def problem_save_tags(problem_id: int, tags: list[str]) -> Any:
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_view_general_description(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_view_general_description, problem_id)
@@ -1086,7 +1088,7 @@ def problem_save_general_description(problem_id: int, description: str) -> Any:
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_view_general_tutorial(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_view_general_tutorial, problem_id)
@@ -1100,14 +1102,14 @@ def problem_save_general_tutorial(problem_id: int, tutorial: str) -> Any:
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def contest_problems(contest_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.contest_problems, contest_id)
     return _to_jsonable(result)
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_packages(problem_id: int) -> Any:
     """List packages available for the problem."""
     polygon = _get_client()
