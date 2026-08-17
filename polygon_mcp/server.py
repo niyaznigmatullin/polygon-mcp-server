@@ -791,7 +791,9 @@ def problem_view_file(
     """
     polygon = _get_client()
     file_type = _parse_file_type(type)
-    data = _call_polygon(polygon.problem_view_file, problem_id, file_type, name)
+    data = _call_polygon(
+        polygon.problem_view_file, problem_id, file_type, name, binary=True
+    )
     return _file_content_response(data, start_line, line_count, binary)
 
 
@@ -813,7 +815,9 @@ def problem_search_file(
     """
     polygon = _get_client()
     file_type = _parse_file_type(type)
-    data = _call_polygon(polygon.problem_view_file, problem_id, file_type, name)
+    data = _call_polygon(
+        polygon.problem_view_file, problem_id, file_type, name, binary=True
+    )
     return _search_file_content(data, query, before, after, max_matches)
 
 
@@ -878,9 +882,10 @@ def problem_patch_file(
     """
     polygon = _get_client()
     file_type = _parse_file_type(type)
-    current = _call_polygon(polygon.problem_view_file, problem_id, file_type, name)
-    if not isinstance(current, str):
-        raise ValueError("File content is not text; patch edits are not supported")
+    current_data = _call_polygon(
+        polygon.problem_view_file, problem_id, file_type, name, binary=True
+    )
+    current = _decode_file_content(current_data)
     if "\x00" in current:
         raise ValueError("File appears to be binary; patch edits are not supported")
     updated = _apply_unified_diff(current, patch, expected_name=name)
@@ -953,7 +958,9 @@ def problem_view_solution(
     line pagination is unavailable in binary mode.
     """
     polygon = _get_client()
-    data = _call_polygon(polygon.problem_view_solution, problem_id, name)
+    data = _call_polygon(
+        polygon.problem_view_solution, problem_id, name, binary=True
+    )
     return _file_content_response(data, start_line, line_count, binary)
 
 
@@ -1064,7 +1071,13 @@ def problem_test_answer(
     characters. Set binary=true to receive the entire answer as base64.
     """
     polygon = _get_client()
-    data = _call_polygon(polygon.problem_test_answer, problem_id, testset, test_index)
+    data = _call_polygon(
+        polygon.problem_test_answer,
+        problem_id,
+        testset,
+        test_index,
+        binary=True,
+    )
     if output_path:
         if start_line is not None or line_count is not None or binary:
             raise ValueError(
@@ -1094,7 +1107,13 @@ def problem_test_input(
     characters. Set binary=true to receive the entire input as base64.
     """
     polygon = _get_client()
-    data = _call_polygon(polygon.problem_test_input, problem_id, testset, test_index)
+    data = _call_polygon(
+        polygon.problem_test_input,
+        problem_id,
+        testset,
+        test_index,
+        binary=True,
+    )
     if output_path:
         if start_line is not None or line_count is not None or binary:
             raise ValueError(

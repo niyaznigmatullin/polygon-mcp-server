@@ -1,6 +1,8 @@
 import base64
 import unittest
+from unittest.mock import Mock, patch
 
+from polygon_mcp import server
 from polygon_mcp.server import (
     MAX_FILE_CHARS,
     MAX_FILE_LINES,
@@ -8,6 +10,40 @@ from polygon_mcp.server import (
     _file_content_response,
     _search_file_content,
 )
+
+
+class BinaryApiCallsTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.client = Mock()
+
+    def _assert_binary_call(self, invoke) -> None:
+        with (
+            patch.object(server, "_get_client", return_value=self.client),
+            patch.object(server, "_call_polygon", return_value=b"hello\n") as call_polygon,
+        ):
+            invoke()
+
+        self.assertIs(call_polygon.call_args.kwargs["binary"], True)
+
+    def test_problem_view_file_requests_binary_response(self) -> None:
+        self._assert_binary_call(
+            lambda: server.problem_view_file.fn(1, "source", "main.cpp")
+        )
+
+    def test_problem_view_solution_requests_binary_response(self) -> None:
+        self._assert_binary_call(
+            lambda: server.problem_view_solution.fn(1, "main.cpp")
+        )
+
+    def test_problem_test_answer_requests_binary_response(self) -> None:
+        self._assert_binary_call(
+            lambda: server.problem_test_answer.fn(1, "tests", 1)
+        )
+
+    def test_problem_test_input_requests_binary_response(self) -> None:
+        self._assert_binary_call(
+            lambda: server.problem_test_input.fn(1, "tests", 1)
+        )
 
 
 class FileContentResponseTests(unittest.TestCase):
