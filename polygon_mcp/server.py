@@ -11,6 +11,7 @@ from typing import Any, Optional
 import patch_ng
 from fastmcp import FastMCP
 from polygon_api import (
+    CheckerTestVerdict,
     FeedbackPolicy,
     FileType,
     PointsPolicy,
@@ -19,6 +20,7 @@ from polygon_api import (
     ProblemInfo,
     ResourceAdvancedProperties,
     Statement,
+    ValidatorTestVerdict,
 )
 
 try:
@@ -764,9 +766,83 @@ def problem_checker(problem_id: int) -> Any:
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
+def problem_checker_tests(problem_id: int) -> Any:
+    """List checker tests and their expected verdicts."""
+    polygon = _get_client()
+    result = _call_polygon(polygon.problem_checker_tests, problem_id)
+    return _to_jsonable(result)
+
+
+@mcp.tool()
+def problem_save_checker_test(
+    problem_id: int,
+    test_index: int,
+    test_input: Optional[str] = None,
+    test_output: Optional[str] = None,
+    test_answer: Optional[str] = None,
+    test_verdict: Optional[str] = None,
+    check_existing: Optional[bool] = None,
+) -> Any:
+    """Add or update a checker test.
+
+    test_verdict can be OK, WRONG_ANSWER, CRASHED, or PRESENTATION_ERROR.
+    """
+    polygon = _get_client()
+    verdict = _parse_enum(CheckerTestVerdict, test_verdict)
+    result = _call_polygon(
+        polygon.problem_save_checker_test,
+        problem_id,
+        test_index,
+        test_input=test_input,
+        test_output=test_output,
+        test_answer=test_answer,
+        test_verdict=verdict,
+        check_existing=check_existing,
+    )
+    return _to_jsonable(result)
+
+
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_validator(problem_id: int) -> Any:
     polygon = _get_client()
     result = _call_polygon(polygon.problem_validator, problem_id)
+    return _to_jsonable(result)
+
+
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
+def problem_validator_tests(problem_id: int) -> Any:
+    """List validator tests and their expected verdicts."""
+    polygon = _get_client()
+    result = _call_polygon(polygon.problem_validator_tests, problem_id)
+    return _to_jsonable(result)
+
+
+@mcp.tool()
+def problem_save_validator_test(
+    problem_id: int,
+    test_index: int,
+    test_input: Optional[str] = None,
+    test_verdict: Optional[str] = None,
+    test_group: Optional[str] = None,
+    testset: Optional[str] = None,
+    check_existing: Optional[bool] = None,
+) -> Any:
+    """Add or update a validator test.
+
+    test_verdict can be VALID or INVALID.
+    """
+    polygon = _get_client()
+    verdict = _parse_enum(ValidatorTestVerdict, test_verdict)
+    result = _call_polygon(
+        polygon.problem_save_validator_test,
+        problem_id,
+        test_index,
+        test_input=test_input,
+        test_verdict=verdict,
+        test_group=test_group,
+        testset=testset,
+        check_existing=check_existing,
+    )
     return _to_jsonable(result)
 
 
