@@ -37,6 +37,7 @@ mcp = FastMCP("polygon")
 READ_ONLY_TOOL_ANNOTATIONS = {"readOnlyHint": True}
 MAX_FILE_LINES = 500
 MAX_FILE_CHARS = 12_000
+MAX_FILE_SEARCH_MATCHES = 20
 
 _LOGGER = logging.getLogger("polygon_mcp")
 if not _LOGGER.handlers:
@@ -311,6 +312,109 @@ def _file_content_response(
                 f"Returned at most {MAX_FILE_LINES} lines. Continue with "
                 f"start_line={response['next_start_line']}."
             )
+    return response
+
+
+def _search_file_content(
+    data: str | bytes,
+    query: str,
+    before: int = 5,
+    after: int = 15,
+    max_matches: int = MAX_FILE_SEARCH_MATCHES,
+) -> dict[str, Any]:
+    if not query:
+        raise ValueError("query is empty")
+    if "\n" in query or "\r" in query:
+        raise ValueError("query must be a single line")
+    if before < 0:
+        raise ValueError("before must be >= 0")
+    if after < 0:
+        raise ValueError("after must be >= 0")
+    if max_matches < 1 or max_matches > MAX_FILE_SEARCH_MATCHES:
+        raise ValueError(f"max_matches must be between 1 and {MAX_FILE_SEARCH_MATCHES}")
+    if (before + after + 1) * max_matches > MAX_FILE_LINES:
+        raise ValueError(
+            f"before/after context across max_matches must not exceed {MAX_FILE_LINES} lines"
+        )
+
+    try:
+        text = _decode_file_content(data)
+    except ValueError as exc:
+        raise ValueError(
+            "File is not valid UTF-8 and cannot be searched; use problem_view_file "
+            "with binary=true to receive base64-encoded content"
+        ) from exc
+    lines = text.splitlines()
+    matching_indices = [index for index, line in enumerate(lines) if query in line]
+    selected_indices = matching_indices[:max_matches]
+    remaining_chars = MAX_FILE_CHARS
+    matches: list[dict[str, Any]] = []
+    content_truncated = False
+
+    def take_line(index: int) -> dict[str, Any]:
+        nonlocal remaining_chars, content_truncated
+        line = lines[index]
+        visible = line[:remaining_chars]
+        if len(visible) < len(line):
+            content_truncated = True
+        remaining_chars -= len(visible)
+        return {"line_number": index + 1, "text": visible}
+
+    for index in selected_indices:
+        if remaining_chars <= 0:
+            content_truncated = True
+            break
+
+        match_line = take_line(index)
+        start_index = max(0, index - before)
+        end_index = min(len(lines), index + after + 1)
+        before_lines = []
+        after_lines = []
+
+        for context_index in range(start_index, index):
+            if remaining_chars <= 0:
+                content_truncated = True
+                break
+            before_lines.append(take_line(context_index))
+        for context_index in range(index + 1, end_index):
+            if remaining_chars <= 0:
+                content_truncated = True
+                break
+            after_lines.append(take_line(context_index))
+
+        matches.append(
+            {
+                "line_number": index + 1,
+                "line": match_line["text"],
+                "before": before_lines,
+                "after": after_lines,
+            }
+        )
+        if content_truncated:
+            break
+
+    response: dict[str, Any] = {
+        "query": query,
+        "total_matches": len(matching_indices),
+        "returned_matches": len(matches),
+        "matches": matches,
+        "encoding": "utf-8",
+    }
+    limited_by_matches = len(matching_indices) > len(selected_indices)
+    if limited_by_matches or content_truncated:
+        response["truncated"] = True
+        reasons = []
+        if limited_by_matches:
+            reasons.append(
+                f"found {len(matching_indices)} matching lines and considered the first "
+                f"{len(selected_indices)}"
+            )
+        if content_truncated:
+            reasons.append(f"context exceeded {MAX_FILE_CHARS} characters")
+        response["message"] = (
+            "; ".join(reasons)
+            + ". Refine query or reduce before, after, or max_matches."
+        )
     return response
 
 
@@ -689,6 +793,28 @@ def problem_view_file(
     file_type = _parse_file_type(type)
     data = _call_polygon(polygon.problem_view_file, problem_id, file_type, name)
     return _file_content_response(data, start_line, line_count, binary)
+
+
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
+def problem_search_file(
+    problem_id: int,
+    type: str,
+    name: str,
+    query: str,
+    before: int = 5,
+    after: int = 15,
+    max_matches: int = MAX_FILE_SEARCH_MATCHES,
+) -> Any:
+    """Search a UTF-8 problem file without returning the whole file.
+
+    Search is literal and case-sensitive. Results include matching line numbers
+    and bounded context. At most 20 matches, 500 context lines, and 12,000
+    characters are returned per call.
+    """
+    polygon = _get_client()
+    file_type = _parse_file_type(type)
+    data = _call_polygon(polygon.problem_view_file, problem_id, file_type, name)
+    return _search_file_content(data, query, before, after, max_matches)
 
 
 @mcp.tool()
