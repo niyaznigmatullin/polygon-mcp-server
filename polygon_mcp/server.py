@@ -1398,23 +1398,29 @@ def problem_package(
     """Download a built package archive to a local file.
 
     package_id comes from problem_packages and must refer to a READY package.
-    type can be standard, linux, or windows; Polygon defaults to standard.
-    Packages are binary archives, so output_path is required.
+    type can be standard, linux, or windows; when omitted Polygon picks the
+    default for the package. Packages are binary archives, so they are written
+    to output_path instead of being returned inline.
     """
     package_type = _parse_enum(PackageType, type)
+    requested_type = str(package_type) if package_type is not None else None
     path = _resolve_output_path(output_path)
     polygon = _get_client()
     data = _call_polygon(
         polygon.problem_package,
         problem_id,
         package_id,
-        type=str(package_type) if package_type is not None else None,
+        type=requested_type,
     )
+    if not isinstance(data, (bytes, bytearray)):
+        raise TypeError(
+            f"Polygon returned {data.__class__.__name__} instead of package bytes"
+        )
     _raise_if_polygon_error_payload(data)
-    raw = data.encode("utf-8") if isinstance(data, str) else bytes(data)
+    raw = bytes(data)
     with open(path, "wb") as handle:
         handle.write(raw)
-    return {"saved_to": path, "size_bytes": len(raw)}
+    return {"saved_to": path, "size_bytes": len(raw), "type": requested_type}
 
 
 @mcp.tool()

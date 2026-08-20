@@ -40,26 +40,42 @@ class ProblemPackageTests(unittest.TestCase):
             self.client.problem_package, 42, 7, type=None
         )
         self.assertEqual(
-            result, {"saved_to": self.output_path, "size_bytes": len(archive)}
+            result,
+            {
+                "saved_to": self.output_path,
+                "size_bytes": len(archive),
+                "type": None,
+            },
         )
         with open(self.output_path, "rb") as handle:
             self.assertEqual(handle.read(), archive)
 
     def test_passes_package_type_as_lowercase_name(self) -> None:
-        _, call_polygon = self._invoke(b"PK\x03\x04", type="Linux")
+        result, call_polygon = self._invoke(b"PK\x03\x04", type="Linux")
 
         self.assertEqual(call_polygon.call_args.kwargs["type"], "linux")
         self.assertEqual(str(PackageType.LINUX), "linux")
+        self.assertEqual(result["type"], "linux")
 
-    def test_rejects_unknown_package_type(self) -> None:
-        with patch.object(server, "_get_client", return_value=self.client):
+    def test_rejects_unknown_package_type_before_api_call(self) -> None:
+        with patch.object(server, "_get_client") as get_client:
             with self.assertRaisesRegex(ValueError, "Unknown PackageType"):
                 server.problem_package.fn(42, 7, self.output_path, type="full")
 
-    def test_rejects_output_path_outside_allowed_roots(self) -> None:
-        with patch.object(server, "_get_client", return_value=self.client):
+        get_client.assert_not_called()
+
+    def test_rejects_output_path_before_api_call(self) -> None:
+        with patch.object(server, "_get_client") as get_client:
             with self.assertRaisesRegex(ValueError, "output_path must be within"):
                 server.problem_package.fn(42, 7, "/etc/polygon-package.zip")
+
+        get_client.assert_not_called()
+
+    def test_rejects_non_binary_api_response(self) -> None:
+        with self.assertRaisesRegex(TypeError, "str instead of package bytes"):
+            self._invoke("not bytes")
+
+        self.assertFalse(os.path.exists(self.output_path))
 
     def test_surfaces_failed_json_body_as_error(self) -> None:
         body = json.dumps(
