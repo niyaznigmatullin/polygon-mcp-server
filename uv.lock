@@ -844,12 +844,6 @@ wheels = [
 ]
 
 [[package]]
-name = "patch-ng"
-version = "1.19.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/65/bb/ebd7c6058dcfbf634986f9a8b3fb638f3269501c73701a48b7530042da5b/patch-ng-1.19.0.tar.gz", hash = "sha256:27484792f4ac1c15fe2f3e4cecf74bb9833d33b75c715b71d199f7e1e7d1f786", size = 18488, upload-time = "2025-10-08T15:17:19.616Z" }
-
-[[package]]
 name = "pathable"
 version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -890,12 +884,11 @@ wheels = [
 
 [[package]]
 name = "polygon-mcp-server"
-version = "0.1.5a2"
+version = "0.1.5a4"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
     { name = "httpx" },
-    { name = "patch-ng" },
     { name = "polygon-api" },
 ]
 
@@ -903,7 +896,6 @@ dependencies = [
 requires-dist = [
     { name = "fastmcp", specifier = "<3" },
     { name = "httpx", specifier = "<1.0" },
-    { name = "patch-ng" },
     { name = "polygon-api", specifier = "==1.1.0a3" },
 ]
 

@@ -12,6 +12,7 @@ from polygon_api import (
     CheckerTestVerdict,
     FeedbackPolicy,
     FileType,
+    PackageType,
     PointsPolicy,
     Polygon,
     PolygonRequestFailedException,
@@ -42,6 +43,7 @@ READ_ONLY_TOOL_ANNOTATIONS = {"readOnlyHint": True}
 MAX_FILE_LINES = 500
 MAX_FILE_CHARS = 12_000
 MAX_FILE_SEARCH_MATCHES = 20
+MAX_ERROR_PAYLOAD_BYTES = 4_096
 
 
 def _warn_stderr(message: str) -> None:
@@ -271,6 +273,22 @@ def _read_local_file(path: str) -> bytes:
         raise ValueError("local_path is empty")
     with open(path, "rb") as handle:
         return handle.read()
+
+
+def _raise_if_polygon_error_payload(data: bytes) -> None:
+    """Raw endpoints skip the status check, so surface FAILED JSON bodies as errors."""
+    if not isinstance(data, (bytes, bytearray)) or len(data) > MAX_ERROR_PAYLOAD_BYTES:
+        return
+    stripped = bytes(data).lstrip()
+    if not stripped.startswith(b"{"):
+        return
+    try:
+        payload = json.loads(stripped.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return
+    if not isinstance(payload, dict) or payload.get("status") != "FAILED":
+        return
+    raise RuntimeError(f"Polygon API error: {payload.get('comment') or 'unknown error'}")
 
 
 def _resolve_output_path(path: str) -> str:
@@ -1396,12 +1414,49 @@ def problem_packages(problem_id: int) -> Any:
 
 
 @mcp.tool()
+def problem_package(
+    problem_id: int,
+    package_id: int,
+    output_path: str,
+    type: Optional[str] = None,
+) -> Any:
+    """Download a built package archive to a local file.
+
+    package_id comes from problem_packages and must refer to a READY package.
+    type can be standard, linux, or windows; when omitted Polygon picks the
+    default for the package. Packages are binary archives, so they are written
+    to output_path instead of being returned inline.
+    """
+    package_type = _parse_enum(PackageType, type)
+    requested_type = str(package_type) if package_type is not None else None
+    path = _resolve_output_path(output_path)
+    polygon = _get_client()
+    data = _call_polygon(
+        polygon.problem_package,
+        problem_id,
+        package_id,
+        type=requested_type,
+    )
+    if not isinstance(data, (bytes, bytearray)):
+        raise TypeError(
+            f"Polygon returned {data.__class__.__name__} instead of package bytes"
+        )
+    _raise_if_polygon_error_payload(data)
+    raw = bytes(data)
+    with open(path, "wb") as handle:
+        handle.write(raw)
+    return {"saved_to": path, "size_bytes": len(raw), "type": requested_type}
+
+
+@mcp.tool()
 def problem_build_package(problem_id: int, full: bool, verify: bool) -> Any:
     """Start building a new package."""
     if full:
         raise ValueError("full packages are disabled; set full=false")
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_build_package, problem_id, full, verify)
+    result = _call_polygon(
+        polygon.problem_build_package, problem_id, verify=verify, full=full
+    )
     return _to_jsonable(result)
 
 
