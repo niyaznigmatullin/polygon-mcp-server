@@ -255,6 +255,17 @@ def _decode_content(content: str, content_base64: bool) -> Any:
     return content
 
 
+def _to_crlf(value: Optional[str]) -> Optional[str]:
+    """Convert line endings to CRLF, the form Polygon stores test data in.
+
+    Content that already contains a CRLF is passed through untouched: the
+    caller picked its line endings deliberately.
+    """
+    if value is None or "\r\n" in value:
+        return value
+    return value.replace("\n", "\r\n")
+
+
 def _read_local_file(path: str) -> bytes:
     if not path:
         raise ValueError("local_path is empty")
@@ -680,13 +691,21 @@ def problem_save_checker_test(
     test_answer: Optional[str] = None,
     test_verdict: Optional[str] = None,
     check_existing: Optional[bool] = None,
+    raw: Optional[bool] = None,
 ) -> Any:
     """Add or update a checker test.
 
     test_verdict can be OK, WRONG_ANSWER, CRASHED, or PRESENTATION_ERROR.
+    Line endings in test_input/test_output/test_answer are converted to CRLF,
+    the form Polygon stores test data in; content that already contains a CRLF
+    is left as is. Pass raw=true to send the content unchanged.
     """
     polygon = _get_client()
     verdict = _parse_enum(CheckerTestVerdict, test_verdict)
+    if not raw:
+        test_input = _to_crlf(test_input)
+        test_output = _to_crlf(test_output)
+        test_answer = _to_crlf(test_answer)
     result = _call_polygon(
         polygon.problem_save_checker_test,
         problem_id,
@@ -724,13 +743,19 @@ def problem_save_validator_test(
     test_group: Optional[str] = None,
     testset: Optional[str] = None,
     check_existing: Optional[bool] = None,
+    raw: Optional[bool] = None,
 ) -> Any:
     """Add or update a validator test.
 
     test_verdict can be VALID or INVALID.
+    Line endings in test_input are converted to CRLF, the form Polygon stores
+    test data in; content that already contains a CRLF is left as is. Pass
+    raw=true to send the content unchanged.
     """
     polygon = _get_client()
     verdict = _parse_enum(ValidatorTestVerdict, test_verdict)
+    if not raw:
+        test_input = _to_crlf(test_input)
     result = _call_polygon(
         polygon.problem_save_validator_test,
         problem_id,
