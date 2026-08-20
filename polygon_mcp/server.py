@@ -1,5 +1,4 @@
 import base64
-import io
 import json
 import os
 import logging
@@ -8,7 +7,6 @@ from logging.handlers import RotatingFileHandler
 from enum import Enum
 from typing import Any, Optional
 
-import patch_ng
 from fastmcp import FastMCP
 from polygon_api import (
     CheckerTestVerdict,
@@ -22,6 +20,9 @@ from polygon_api import (
     Statement,
     ValidatorTestVerdict,
 )
+
+from .edit_targets import build_edit_response, validate_edit_target
+from .text_edit import apply_string_edit
 
 try:
     from polygon_api import HTTPRequestFailedException
@@ -451,109 +452,6 @@ def _search_file_content(
     return response
 
 
-def _apply_line_edit(text: str, start_line: int, line_count: int, replacement: str) -> str:
-    if start_line < 1:
-        raise ValueError("start_line must be >= 1")
-    if line_count < 0:
-        raise ValueError("line_count must be >= 0")
-    lines = text.splitlines(keepends=True)
-    start_index = start_line - 1
-    if start_index > len(lines):
-        raise ValueError("start_line is beyond end of file")
-    end_index = start_index + line_count
-    if end_index > len(lines):
-        raise ValueError("line_count goes beyond end of file")
-    new_lines = lines[:start_index] + [replacement] + lines[end_index:]
-    return "".join(new_lines)
-
-
-def _parse_unified_diff(patch_text: str) -> list[dict]:
-    lines = patch_text.splitlines(keepends=True)
-    hunks: list[dict] = []
-    i = 0
-    file_headers_seen = 0
-
-    while i < len(lines):
-        line = lines[i]
-        if line.startswith("--- "):
-            file_headers_seen += 1
-            if file_headers_seen > 1:
-                raise ValueError("Only single-file patches are supported")
-            i += 1
-            if i >= len(lines) or not lines[i].startswith("+++ "):
-                raise ValueError("Invalid patch: missing '+++' header")
-            i += 1
-            continue
-        if line.startswith("@@ "):
-            header = line
-            i += 1
-            # @@ -l,s +l,s @@
-            try:
-                meta = header.strip().split()
-                old_part = meta[1]  # -l,s
-                new_part = meta[2]  # +l,s
-                old_nums = old_part[1:].split(",")
-                new_nums = new_part[1:].split(",")
-                start_old = int(old_nums[0])
-                len_old = int(old_nums[1]) if len(old_nums) > 1 else 1
-                start_new = int(new_nums[0])
-                len_new = int(new_nums[1]) if len(new_nums) > 1 else 1
-            except Exception as exc:
-                raise ValueError(f"Invalid hunk header: {header.strip()}") from exc
-
-            hunk_lines: list[str] = []
-            while i < len(lines):
-                next_line = lines[i]
-                if next_line.startswith("@@ "):
-                    break
-                if next_line.startswith("--- ") or next_line.startswith("+++ "):
-                    break
-                if not next_line.startswith((" ", "+", "-", "\\")):
-                    raise ValueError(f"Invalid patch line: {next_line!r}")
-                hunk_lines.append(next_line)
-                i += 1
-            hunks.append(
-                {
-                    "start_old": start_old,
-                    "len_old": len_old,
-                    "start_new": start_new,
-                    "len_new": len_new,
-                    "lines": hunk_lines,
-                }
-            )
-            continue
-        i += 1
-
-    if not hunks:
-        raise ValueError("Patch contains no hunks")
-    return hunks
-
-
-def _apply_unified_diff(text: str, patch_text: str, expected_name: Optional[str] = None) -> str:
-    patch_bytes = patch_text.encode("utf-8")
-    if not patch_bytes.endswith(b"\n"):
-        patch_bytes += b"\n"
-    patch_set = patch_ng.fromstring(patch_bytes)
-    if not patch_set or patch_set.errors:
-        details = ""
-        if patch_set and getattr(patch_set, "errors", None):
-            details = f" (errors={patch_set.errors})"
-        raise ValueError(f"Invalid patch format{details}")
-    if len(patch_set.items) != 1:
-        raise ValueError("Only single-file patches are supported")
-
-    item = patch_set.items[0]
-    source = item.source.decode("utf-8", errors="ignore") if isinstance(item.source, (bytes, bytearray)) else str(item.source)
-    target = item.target.decode("utf-8", errors="ignore") if isinstance(item.target, (bytes, bytearray)) else str(item.target)
-    patch_name = os.path.basename(target or source)
-    if expected_name and patch_name and patch_name != expected_name:
-        raise ValueError(f"Patch file name '{patch_name}' does not match expected '{expected_name}'")
-
-    instream = io.BytesIO(text.encode("utf-8"))
-    patched_bytes = b"".join(patch_set.patch_stream(instream, item.hunks))
-    return patched_bytes.decode("utf-8")
-
-
 _STATEMENT_SECTIONS = {
     "legend",
     "input",
@@ -973,74 +871,112 @@ def problem_save_file(
     return _to_jsonable(result)
 
 
-@mcp.tool()
-def problem_patch_file(
-    problem_id: int,
-    type: str,
-    name: str,
-    patch: str,
-    source_type: Optional[str] = None,
-    resource_advanced_properties: Optional[dict] = None,
-) -> Any:
-    """Apply a unified diff (single-file) patch to a text file and save it back.
+def _read_edit_target(
+    polygon, problem_id: int, target: str, address: dict[str, str]
+) -> tuple[str, str]:
+    if target == "file":
+        file_type = _parse_file_type(address["type"])
+        data = _call_polygon(
+            polygon.problem_view_file, problem_id, file_type, address["name"], binary=True
+        )
+        return _decode_file_content(data), f'{file_type}/{address["name"]}'
+    if target == "solution":
+        data = _call_polygon(
+            polygon.problem_view_solution, problem_id, address["name"], binary=True
+        )
+        return _decode_file_content(data), f'solution {address["name"]}'
+    if target == "script":
+        source = _call_polygon(polygon.problem_script, problem_id, address["testset"])
+        return source or "", f'script {address["testset"]}'
 
-    The server reads the current file, applies the patch, and saves it back.
-    If the patch doesn't apply, it returns an error.
-    """
-    polygon = _get_client()
-    file_type = _parse_file_type(type)
-    current_data = _call_polygon(
-        polygon.problem_view_file, problem_id, file_type, name, binary=True
-    )
-    current = _decode_file_content(current_data)
-    if "\x00" in current:
-        raise ValueError("File appears to be binary; patch edits are not supported")
-    updated = _apply_unified_diff(current, patch, expected_name=name)
-    if updated == current:
-        raise ValueError("Patch did not change file content")
-    adv = _resource_adv_from_dict(resource_advanced_properties)
-    result = _call_polygon(
-        polygon.problem_save_file,
+    section_key = _normalize_statement_section(address["section"])
+    statements = _call_polygon(polygon.problem_statements, problem_id)
+    statement = statements.get(address["lang"]) if isinstance(statements, dict) else None
+    if statement is None:
+        raise ValueError(f'Statement not found for lang: {address["lang"]}')
+    current = getattr(statement, section_key, None)
+    return current or "", f'statement {address["lang"]}/{section_key}'
+
+
+def _save_edit_target(
+    polygon, problem_id: int, target: str, address: dict[str, str], updated: str
+) -> Any:
+    if target == "file":
+        file_type = _parse_file_type(address["type"])
+        return _call_polygon(
+            polygon.problem_save_file,
+            problem_id,
+            file_type,
+            address["name"],
+            updated,
+            source_type=address.get("source_type"),
+        )
+    if target == "solution":
+        return _call_polygon(
+            polygon.problem_save_solution,
+            problem_id,
+            address["name"],
+            updated,
+            None,
+            source_type=address.get("source_type"),
+        )
+    if target == "script":
+        return _call_polygon(
+            polygon.problem_save_script, problem_id, address["testset"], updated
+        )
+
+    section_key = _normalize_statement_section(address["section"])
+    return _call_polygon(
+        polygon.problem_save_statement,
         problem_id,
-        file_type,
-        name,
-        updated,
-        source_type=source_type,
-        resource_advanced_properties=adv,
+        address["lang"],
+        Statement(**{section_key: updated}),
     )
-    return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_patch_statement(
+def problem_edit(
     problem_id: int,
-    lang: str,
-    section: str,
-    patch: str,
+    target: str,
+    old_string: str,
+    new_string: str,
+    replace_all: bool = False,
+    type: Optional[str] = None,
+    name: Optional[str] = None,
+    lang: Optional[str] = None,
+    section: Optional[str] = None,
+    testset: Optional[str] = None,
+    source_type: Optional[str] = None,
 ) -> Any:
-    """Apply a unified diff patch to a statement section and save it back.
+    """Replace an exact string in a problem's text content and save it back.
 
-    The server reads the current statement, applies the patch to the selected
-    section, and saves it back. If the patch doesn't apply, it returns an error.
-    Sections: legend, input, output, notes, tutorial, scoring, interaction.
+    old_string must occur exactly once unless replace_all is true; \\r\\n and \\n
+    match interchangeably. target selects what to edit and which addressing
+    parameters are required: file (type, name), solution (name), statement
+    (lang, section), script (testset).
     """
+    normalized_target, address = validate_edit_target(
+        target,
+        {
+            "type": type,
+            "name": name,
+            "lang": lang,
+            "section": section,
+            "testset": testset,
+            "source_type": source_type,
+        },
+    )
     polygon = _get_client()
-    section_key = _normalize_statement_section(section)
-    try:
-        statements = _call_polygon(polygon.problem_statements, problem_id)
-        statement = statements.get(lang) if isinstance(statements, dict) else None
-        if statement is None:
-            raise ValueError(f"Statement not found for lang: {lang}")
-        current = getattr(statement, section_key, None)
-        current_text = current or ""
-        updated = _apply_unified_diff(current_text, patch, expected_name=section_key)
-        if updated == current_text:
-            raise ValueError("Patch did not change statement section")
-        statement_patch = Statement(**{section_key: updated})
-        result = _call_polygon(polygon.problem_save_statement, problem_id, lang, statement_patch)
-    except Exception as exc:
-        raise
-    return _to_jsonable(result)
+    current, label = _read_edit_target(polygon, problem_id, normalized_target, address)
+    if "\x00" in current:
+        raise ValueError("Content appears to be binary; edits are not supported")
+    updated, spans = apply_string_edit(
+        current, old_string, new_string, replace_all, label
+    )
+    api_result = _save_edit_target(
+        polygon, problem_id, normalized_target, address, updated
+    )
+    return build_edit_response(label, current, updated, spans, _to_jsonable(api_result))
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
@@ -1297,21 +1233,6 @@ def problem_save_script(problem_id: int, testset: str, source: str) -> Any:
     """
     polygon = _get_client()
     result = _call_polygon(polygon.problem_save_script, problem_id, testset, source)
-    return _to_jsonable(result)
-
-
-@mcp.tool()
-def problem_patch_script(problem_id: int, testset: str, patch: str) -> Any:
-    """Apply a unified diff patch to the test generation script and save it back.
-
-    The server reads the current script, applies the patch, and saves the updated script.
-    """
-    polygon = _get_client()
-    current = _call_polygon(polygon.problem_script, problem_id, testset) or ""
-    updated = _apply_unified_diff(current, patch)
-    if updated == current:
-        raise ValueError("Patch did not change script content")
-    result = _call_polygon(polygon.problem_save_script, problem_id, testset, updated)
     return _to_jsonable(result)
 
 
