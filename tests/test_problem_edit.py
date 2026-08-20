@@ -180,5 +180,23 @@ class ProblemEditToolTests(unittest.TestCase):
         self.assertEqual(self.client.method_calls, [])
 
 
+class RemovedPatchToolsTests(unittest.TestCase):
+    def test_patch_tools_are_gone(self) -> None:
+        for tool_name in (
+            "problem_patch_file",
+            "problem_patch_statement",
+            "problem_patch_script",
+        ):
+            self.assertFalse(
+                hasattr(server, tool_name), f"{tool_name} should have been removed"
+            )
+
+    def test_diff_helpers_are_gone(self) -> None:
+        for helper in ("_apply_unified_diff", "_parse_unified_diff", "_apply_line_edit"):
+            self.assertFalse(
+                hasattr(server, helper), f"{helper} should have been removed"
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
