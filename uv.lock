@@ -884,7 +884,7 @@ wheels = [
 
 [[package]]
 name = "polygon-mcp-server"
-version = "0.1.5a4"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
