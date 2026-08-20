@@ -21,6 +21,9 @@ from polygon_api import (
     Statement,
 )
 
+from .edit_targets import build_edit_response, validate_edit_target
+from .text_edit import apply_string_edit
+
 try:
     from polygon_api import HTTPRequestFailedException
 except ImportError:  # pragma: no cover - older exports
@@ -895,6 +898,114 @@ def problem_save_file(
         resource_advanced_properties=adv,
     )
     return _to_jsonable(result)
+
+
+def _read_edit_target(
+    polygon, problem_id: int, target: str, address: dict[str, str]
+) -> tuple[str, str]:
+    if target == "file":
+        file_type = _parse_file_type(address["type"])
+        data = _call_polygon(
+            polygon.problem_view_file, problem_id, file_type, address["name"], binary=True
+        )
+        return _decode_file_content(data), f'{file_type}/{address["name"]}'
+    if target == "solution":
+        data = _call_polygon(
+            polygon.problem_view_solution, problem_id, address["name"], binary=True
+        )
+        return _decode_file_content(data), f'solution {address["name"]}'
+    if target == "script":
+        source = _call_polygon(polygon.problem_script, problem_id, address["testset"])
+        return source or "", f'script {address["testset"]}'
+
+    section_key = _normalize_statement_section(address["section"])
+    statements = _call_polygon(polygon.problem_statements, problem_id)
+    statement = statements.get(address["lang"]) if isinstance(statements, dict) else None
+    if statement is None:
+        raise ValueError(f'Statement not found for lang: {address["lang"]}')
+    current = getattr(statement, section_key, None)
+    return current or "", f'statement {address["lang"]}/{section_key}'
+
+
+def _save_edit_target(
+    polygon, problem_id: int, target: str, address: dict[str, str], updated: str
+) -> Any:
+    if target == "file":
+        file_type = _parse_file_type(address["type"])
+        return _call_polygon(
+            polygon.problem_save_file,
+            problem_id,
+            file_type,
+            address["name"],
+            updated,
+            source_type=address.get("source_type"),
+        )
+    if target == "solution":
+        return _call_polygon(
+            polygon.problem_save_solution,
+            problem_id,
+            address["name"],
+            updated,
+            None,
+            source_type=address.get("source_type"),
+        )
+    if target == "script":
+        return _call_polygon(
+            polygon.problem_save_script, problem_id, address["testset"], updated
+        )
+
+    section_key = _normalize_statement_section(address["section"])
+    return _call_polygon(
+        polygon.problem_save_statement,
+        problem_id,
+        address["lang"],
+        Statement(**{section_key: updated}),
+    )
+
+
+@mcp.tool()
+def problem_edit(
+    problem_id: int,
+    target: str,
+    old_string: str,
+    new_string: str,
+    replace_all: bool = False,
+    type: Optional[str] = None,
+    name: Optional[str] = None,
+    lang: Optional[str] = None,
+    section: Optional[str] = None,
+    testset: Optional[str] = None,
+    source_type: Optional[str] = None,
+) -> Any:
+    """Replace an exact string in a problem's text content and save it back.
+
+    old_string must occur exactly once unless replace_all is true; \\r\\n and \\n
+    match interchangeably. target selects what to edit and which addressing
+    parameters are required: file (type, name), solution (name), statement
+    (lang, section), script (testset).
+    """
+    normalized_target, address = validate_edit_target(
+        target,
+        {
+            "type": type,
+            "name": name,
+            "lang": lang,
+            "section": section,
+            "testset": testset,
+            "source_type": source_type,
+        },
+    )
+    polygon = _get_client()
+    current, label = _read_edit_target(polygon, problem_id, normalized_target, address)
+    if "\x00" in current:
+        raise ValueError("Content appears to be binary; edits are not supported")
+    updated, spans = apply_string_edit(
+        current, old_string, new_string, replace_all, label
+    )
+    api_result = _save_edit_target(
+        polygon, problem_id, normalized_target, address, updated
+    )
+    return build_edit_response(label, current, updated, spans, _to_jsonable(api_result))
 
 
 @mcp.tool()
