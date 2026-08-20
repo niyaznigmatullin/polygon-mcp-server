@@ -1423,7 +1423,9 @@ def problem_build_package(problem_id: int, full: bool, verify: bool) -> Any:
     if full:
         raise ValueError("full packages are disabled; set full=false")
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_build_package, problem_id, full, verify)
+    result = _call_polygon(
+        polygon.problem_build_package, problem_id, verify=verify, full=full
+    )
     return _to_jsonable(result)
 
 
