@@ -1086,8 +1086,8 @@ def problem_save_solution(
         problem_id,
         name,
         file_value,
-        source_type,
         tag,
+        source_type=source_type,
         check_existing=check_existing,
     )
     return _to_jsonable(result)
@@ -1321,9 +1321,14 @@ def problem_enable_points(problem_id: int, enable: bool) -> Any:
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_view_test_group(testset: str, group: str) -> Any:
+def problem_view_test_group(
+    problem_id: int,
+    testset: str,
+    group: Optional[str] = None,
+) -> Any:
+    """View a test group, or all groups of the testset when group is omitted."""
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_view_test_group, testset, group)
+    result = _call_polygon(polygon.problem_view_test_group, problem_id, testset, group)
     return _to_jsonable(result)
 
 
