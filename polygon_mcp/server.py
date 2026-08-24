@@ -547,7 +547,8 @@ def problem_update_info(
     output_file: Optional[str] = None,
     interactive: Optional[bool] = None,
     time_limit: Optional[int] = None,
-    memory_limit: Optional[int] = None, pin: Optional[str] = None,
+    memory_limit: Optional[int] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     polygon = _get_client()
     info = ProblemInfo(
@@ -579,7 +580,8 @@ def problem_discard_working_copy(problem_id: int, pin: Optional[str] = None) -> 
 def problem_commit_changes(
     problem_id: int,
     minor_changes: Optional[bool] = None,
-    message: Optional[str] = None, pin: Optional[str] = None,
+    message: Optional[str] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     polygon = _get_client()
     result = _call_polygon(
@@ -596,7 +598,8 @@ def problem_commit_changes(
 def problem_statements(
     problem_id: int,
     lang: Optional[str] = None,
-    fields: Optional[list[str]] = None, pin: Optional[str] = None,
+    fields: Optional[list[str]] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Get problem statements, optionally selecting a language and fields.
 
@@ -634,7 +637,8 @@ def problem_save_statement(
     scoring: Optional[str] = None,
     interaction: Optional[str] = None,
     notes: Optional[str] = None,
-    tutorial: Optional[str] = None, pin: Optional[str] = None,
+    tutorial: Optional[str] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Save or partially update a statement. Use None to leave fields unchanged."""
     polygon = _get_client()
@@ -669,7 +673,8 @@ def problem_save_statement_resource(
     content: Optional[str] = None,
     content_base64: bool = False,
     local_path: Optional[str] = None,
-    check_existing: Optional[bool] = None, pin: Optional[str] = None,
+    check_existing: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     polygon = _get_client()
     if local_path:
@@ -713,7 +718,8 @@ def problem_save_checker_test(
     test_answer: Optional[str] = None,
     test_verdict: Optional[str] = None,
     check_existing: Optional[bool] = None,
-    raw: Optional[bool] = None, pin: Optional[str] = None,
+    raw: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Add or update a checker test.
 
@@ -766,7 +772,8 @@ def problem_save_validator_test(
     test_group: Optional[str] = None,
     testset: Optional[str] = None,
     check_existing: Optional[bool] = None,
-    raw: Optional[bool] = None, pin: Optional[str] = None,
+    raw: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Add or update a validator test.
 
@@ -839,7 +846,8 @@ def problem_view_file(
     name: str,
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
-    binary: bool = False, pin: Optional[str] = None,
+    binary: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Read a problem file with bounded line pagination.
 
@@ -863,7 +871,8 @@ def problem_search_file(
     query: str,
     before: int = 5,
     after: int = 15,
-    max_matches: int = MAX_FILE_SEARCH_MATCHES, pin: Optional[str] = None,
+    max_matches: int = MAX_FILE_SEARCH_MATCHES,
+    pin: Optional[str] = None,
 ) -> Any:
     """Search a UTF-8 problem file without returning the whole file.
 
@@ -888,7 +897,8 @@ def problem_save_file(
     content_base64: bool = False,
     local_path: Optional[str] = None,
     source_type: Optional[str] = None,
-    resource_advanced_properties: Optional[dict] = None, pin: Optional[str] = None,
+    resource_advanced_properties: Optional[dict] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Add or edit a file (source, resource, attachment, etc.).
 
@@ -1068,7 +1078,8 @@ def problem_view_solution(
     name: str,
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
-    binary: bool = False, pin: Optional[str] = None,
+    binary: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Read a solution with bounded line pagination.
 
@@ -1092,7 +1103,8 @@ def problem_save_solution(
     content: Optional[str] = None,
     content_base64: bool = False,
     local_path: Optional[str] = None,
-    check_existing: Optional[bool] = None, pin: Optional[str] = None,
+    check_existing: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Add or edit a solution.
 
@@ -1134,7 +1146,8 @@ def problem_tests(
     no_inputs: Optional[bool] = None,
     fields: Optional[list[str]] = None,
     input_line_limit: Optional[int] = None,
-    examples_only: bool = False, pin: Optional[str] = None,
+    examples_only: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """List tests for a testset, optionally selecting fields.
 
@@ -1184,7 +1197,8 @@ def problem_test_answer(
     output_path: Optional[str] = None,
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
-    binary: bool = False, pin: Optional[str] = None,
+    binary: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Get generated test answer for a test.
 
@@ -1221,7 +1235,8 @@ def problem_test_input(
     output_path: Optional[str] = None,
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
-    binary: bool = False, pin: Optional[str] = None,
+    binary: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Get generated test input for a test.
 
@@ -1264,7 +1279,8 @@ def problem_save_test(
     test_output_for_statements: Optional[str] = None,
     verify_input_output_for_statements: Optional[bool] = None,
     check_existing: Optional[bool] = None,
-    test_input_base64: bool = False, pin: Optional[str] = None,
+    test_input_base64: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Save or update a test.
 
@@ -1328,7 +1344,8 @@ def problem_set_test_group(
     testset: str,
     test_group: str,
     test_index: Optional[int] = None,
-    test_indices: Optional[list[int]] = None, pin: Optional[str] = None,
+    test_indices: Optional[list[int]] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Assign tests to a test group.
 
@@ -1372,7 +1389,8 @@ def problem_enable_points(problem_id: int, enable: bool, pin: Optional[str] = No
 def problem_view_test_group(
     problem_id: int,
     testset: str,
-    group: Optional[str] = None, pin: Optional[str] = None,
+    group: Optional[str] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """View a test group, or all groups of the testset when group is omitted."""
     polygon = _get_client()
@@ -1389,7 +1407,8 @@ def problem_save_test_group(
     group: str,
     points_policy: Optional[str] = None,
     feedback_policy: Optional[str] = None,
-    dependencies: Optional[list] = None, pin: Optional[str] = None,
+    dependencies: Optional[list] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Save or update a test group.
 
@@ -1482,7 +1501,8 @@ def problem_package(
     problem_id: int,
     package_id: int,
     output_path: str,
-    type: Optional[str] = None, pin: Optional[str] = None,
+    type: Optional[str] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Download a built package archive to a local file.
 
