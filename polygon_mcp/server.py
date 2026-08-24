@@ -723,7 +723,11 @@ def problem_checker(problem_id: int, pin: Optional[str] = None) -> Any:
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_checker_tests(problem_id: int, pin: Optional[str] = None) -> Any:
-    """List checker tests and their expected verdicts."""
+    """List checker tests, their expected verdicts and the last run result.
+
+    run_verdict and run_comment describe what the checker actually did on the
+    test the last time Polygon ran it; they are empty until it has been run.
+    """
     polygon = _get_client()
     result = _call_polygon(polygon.problem_checker_tests, problem_id, pin=pin)
     return _to_jsonable(result)
@@ -777,7 +781,11 @@ def problem_validator(problem_id: int, pin: Optional[str] = None) -> Any:
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_validator_tests(problem_id: int, pin: Optional[str] = None) -> Any:
-    """List validator tests and their expected verdicts."""
+    """List validator tests, their expected verdicts and the last run result.
+
+    run_verdict and run_comment describe what the validator actually did on the
+    test the last time Polygon ran it; they are empty until it has been run.
+    """
     polygon = _get_client()
     result = _call_polygon(polygon.problem_validator_tests, problem_id, pin=pin)
     return _to_jsonable(result)

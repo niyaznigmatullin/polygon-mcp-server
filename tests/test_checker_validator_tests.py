@@ -1,7 +1,11 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from polygon_api import CheckerTestVerdict, ValidatorTestVerdict
+from polygon_api import (
+    CheckerTestVerdict,
+    ValidatorTestRunVerdict,
+    ValidatorTestVerdict,
+)
 
 from polygon_mcp import server
 
@@ -30,6 +34,25 @@ class CheckerValidatorTestToolsTests(unittest.TestCase):
             self.client.problem_checker_tests, 42, pin=None
         )
         self.assertEqual(result[0]["expected_verdict"], "OK")
+
+    def test_checker_tests_report_the_last_run(self) -> None:
+        checker_test = Mock(
+            index=1,
+            input="1",
+            output="1",
+            answer="1",
+            expected_verdict=CheckerTestVerdict.OK,
+            run_verdict=CheckerTestVerdict.WRONG_ANSWER,
+            run_comment="wrong answer 1st words differ",
+        )
+        with (
+            patch.object(server, "_get_client", return_value=self.client),
+            patch.object(server, "_call_polygon", return_value=[checker_test]),
+        ):
+            result = server.problem_checker_tests.fn(42)
+
+        self.assertEqual(result[0]["run_verdict"], "WRONG_ANSWER")
+        self.assertEqual(result[0]["run_comment"], "wrong answer 1st words differ")
 
     def test_problem_save_checker_test_converts_verdict(self) -> None:
         with (
@@ -79,6 +102,23 @@ class CheckerValidatorTestToolsTests(unittest.TestCase):
             self.client.problem_validator_tests, 42, pin=None
         )
         self.assertEqual(result[0]["expected_verdict"], "INVALID")
+
+    def test_validator_tests_report_the_last_run(self) -> None:
+        validator_test = Mock(
+            index=1,
+            input="1",
+            expected_verdict=ValidatorTestVerdict.VALID,
+            run_verdict=ValidatorTestRunVerdict.VALID,
+            run_comment="ok",
+        )
+        with (
+            patch.object(server, "_get_client", return_value=self.client),
+            patch.object(server, "_call_polygon", return_value=[validator_test]),
+        ):
+            result = server.problem_validator_tests.fn(42)
+
+        self.assertEqual(result[0]["run_verdict"], "VALID")
+        self.assertEqual(result[0]["run_comment"], "ok")
 
     def test_problem_save_validator_test_converts_verdict(self) -> None:
         with (
