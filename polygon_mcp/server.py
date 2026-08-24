@@ -1513,6 +1513,31 @@ def problem_package(
     return {"saved_to": path, "size_bytes": len(raw), "type": requested_type}
 
 
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
+def problem_cautions(
+    problem_id: int,
+    include_ai: bool = False,
+    pin: Optional[str] = None,
+) -> Any:
+    """List what Polygon thinks is wrong or risky about the problem.
+
+    Returns four buckets of cautions - common, statement, structure, issues -
+    where each caution has a type, a severity of SOFT or HARD, a category, a
+    message and its parameters; plus package_readiness_issues, which block
+    building a package, and latest_package_warnings from the last build.
+
+    Polygon's cached "correction tips from AI" are left out by default: they
+    carry whole statement rewrites and source reviews. Pass include_ai=true to
+    get them under the "ai" key.
+    """
+    polygon = _get_client()
+    result = _call_polygon(polygon.problem_cautions, problem_id, pin=pin)
+    data = _to_jsonable(result)
+    if not include_ai and isinstance(data, dict):
+        data.pop("ai", None)
+    return data
+
+
 @mcp.tool()
 def problem_build_package(
     problem_id: int, full: bool, verify: bool, pin: Optional[str] = None
