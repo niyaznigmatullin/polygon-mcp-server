@@ -548,8 +548,16 @@ def problem_update_info(
     interactive: Optional[bool] = None,
     time_limit: Optional[int] = None,
     memory_limit: Optional[int] = None,
+    well_formed: Optional[bool] = None,
+    skip_duplicated_tests_validation: Optional[bool] = None,
     pin: Optional[str] = None,
 ) -> Any:
+    """Update problem settings. Use None to leave a field unchanged.
+
+    well_formed toggles Polygon's well-formedness requirement for the problem;
+    skip_duplicated_tests_validation turns off its duplicate-test check. Both
+    of them decide which cautions problem_cautions reports.
+    """
     polygon = _get_client()
     info = ProblemInfo(
         input_file=input_file,
@@ -557,6 +565,8 @@ def problem_update_info(
         interactive=interactive,
         time_limit=time_limit,
         memory_limit=memory_limit,
+        well_formed=well_formed,
+        skip_duplicated_tests_validation=skip_duplicated_tests_validation,
     )
     result = _call_polygon(polygon.problem_update_info, problem_id, info, pin=pin)
     return _to_jsonable(result)
@@ -604,7 +614,8 @@ def problem_statements(
     """Get problem statements, optionally selecting a language and fields.
 
     fields can include: encoding, name, legend, input, output, scoring,
-    interaction, notes, tutorial.
+    interaction, notes, tutorial, show_in_review,
+    show_cautions_and_grammatical_fixes.
     """
     polygon = _get_client()
     result = _call_polygon(polygon.problem_statements, problem_id, pin=pin)
@@ -638,9 +649,16 @@ def problem_save_statement(
     interaction: Optional[str] = None,
     notes: Optional[str] = None,
     tutorial: Optional[str] = None,
+    show_in_review: Optional[bool] = None,
+    show_cautions_and_grammatical_fixes: Optional[bool] = None,
     pin: Optional[str] = None,
 ) -> Any:
-    """Save or partially update a statement. Use None to leave fields unchanged."""
+    """Save or partially update a statement. Use None to leave fields unchanged.
+
+    show_in_review and show_cautions_and_grammatical_fixes control whether this
+    language takes part in Polygon's review and whether it collects statement
+    cautions and AI grammar fixes; problem_cautions reports what they produce.
+    """
     polygon = _get_client()
     statement = Statement(
         encoding=encoding,
@@ -652,6 +670,8 @@ def problem_save_statement(
         interaction=interaction,
         notes=notes,
         tutorial=tutorial,
+        show_in_review=show_in_review,
+        show_cautions_and_grammatical_fixes=show_cautions_and_grammatical_fixes,
     )
     result = _call_polygon(
         polygon.problem_save_statement, problem_id, lang, statement, pin=pin
