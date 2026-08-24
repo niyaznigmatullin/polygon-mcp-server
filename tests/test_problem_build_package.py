@@ -19,7 +19,7 @@ class ProblemBuildPackageTests(unittest.TestCase):
             result = server.problem_build_package.fn(42, False, True)
 
         call_polygon.assert_called_once_with(
-            self.client.problem_build_package, 42, verify=True, full=False
+            self.client.problem_build_package, 42, verify=True, full=False, pin=None
         )
         self.assertTrue(result)
 

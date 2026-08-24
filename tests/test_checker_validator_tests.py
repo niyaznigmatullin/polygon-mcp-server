@@ -26,7 +26,9 @@ class CheckerValidatorTestToolsTests(unittest.TestCase):
         ):
             result = server.problem_checker_tests.fn(42)
 
-        call_polygon.assert_called_once_with(self.client.problem_checker_tests, 42)
+        call_polygon.assert_called_once_with(
+            self.client.problem_checker_tests, 42, pin=None
+        )
         self.assertEqual(result[0]["expected_verdict"], "OK")
 
     def test_problem_save_checker_test_converts_verdict(self) -> None:
@@ -53,6 +55,7 @@ class CheckerValidatorTestToolsTests(unittest.TestCase):
             test_answer="answer",
             test_verdict=CheckerTestVerdict.WRONG_ANSWER,
             check_existing=True,
+            pin=None,
         )
         self.assertTrue(result)
 
@@ -72,7 +75,9 @@ class CheckerValidatorTestToolsTests(unittest.TestCase):
         ):
             result = server.problem_validator_tests.fn(42)
 
-        call_polygon.assert_called_once_with(self.client.problem_validator_tests, 42)
+        call_polygon.assert_called_once_with(
+            self.client.problem_validator_tests, 42, pin=None
+        )
         self.assertEqual(result[0]["expected_verdict"], "INVALID")
 
     def test_problem_save_validator_test_converts_verdict(self) -> None:
@@ -99,6 +104,7 @@ class CheckerValidatorTestToolsTests(unittest.TestCase):
             test_group="group-1",
             testset="tests",
             check_existing=False,
+            pin=None,
         )
         self.assertTrue(result)
 
