@@ -145,6 +145,18 @@ class ApiSignatureConformanceTests(unittest.TestCase):
                         f"{site}: keyword '{name}' is filled from '{node.id}'",
                     )
 
+    def test_installed_client_has_the_1_2_surface(self) -> None:
+        """The pin below is a pre-release; fail loudly when the old client is installed."""
+        self.assertTrue(
+            hasattr(Polygon, "problem_cautions"),
+            "polygon_api is older than 1.2.0a1: no Polygon.problem_cautions",
+        )
+        self.assertIn(
+            "pin",
+            inspect.signature(Polygon.problem_info).parameters,
+            "polygon_api is older than 1.2.0a1: problem_info takes no pin",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
