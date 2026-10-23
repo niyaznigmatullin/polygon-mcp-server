@@ -146,10 +146,14 @@ class ApiSignatureConformanceTests(unittest.TestCase):
                     )
 
     def test_installed_client_has_the_1_2_surface(self) -> None:
-        """The pin below is a pre-release; fail loudly when the old client is installed."""
+        """Fail loudly when a client older than the 1.2.0 pin is installed."""
         self.assertTrue(
-            hasattr(Polygon, "problem_cautions"),
-            "polygon_api is older than 1.2.0a1: no Polygon.problem_cautions",
+            hasattr(Polygon, "problem_render_statements"),
+            "polygon_api is older than 1.2.0: no Polygon.problem_render_statements",
+        )
+        self.assertTrue(
+            hasattr(Polygon, "problem_view_statement_resource"),
+            "polygon_api is older than 1.2.0: no Polygon.problem_view_statement_resource",
         )
         self.assertIn(
             "pin",
