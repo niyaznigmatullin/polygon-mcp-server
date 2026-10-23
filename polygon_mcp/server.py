@@ -1072,6 +1072,16 @@ def _read_edit_target(
             polygon.problem_view_solution, problem_id, address["name"], binary=True, pin=pin
         )
         return _decode_file_content(data), f'solution {address["name"]}'
+    if target == "statement_resource":
+        data = _call_polygon(
+            polygon.problem_view_statement_resource,
+            problem_id,
+            address["name"],
+            binary=True,
+            pin=pin,
+        )
+        _raise_if_polygon_error_payload(data)
+        return _decode_file_content(data), f'statement resource {address["name"]}'
     if target == "script":
         source = _call_polygon(
             polygon.problem_script, problem_id, address["testset"], pin=pin
@@ -1116,6 +1126,14 @@ def _save_edit_target(
             source_type=address.get("source_type"),
             pin=pin,
         )
+    if target == "statement_resource":
+        return _call_polygon(
+            polygon.problem_save_statement_resource,
+            problem_id,
+            address["name"],
+            updated,
+            pin=pin,
+        )
     if target == "script":
         return _call_polygon(
             polygon.problem_save_script, problem_id, address["testset"], updated, pin=pin
@@ -1151,7 +1169,7 @@ def problem_edit(
     old_string must occur exactly once unless replace_all is true; \\r\\n and \\n
     match interchangeably. target selects what to edit and which addressing
     parameters are required: file (type, name), solution (name), statement
-    (lang, section), script (testset).
+    (lang, section), statement_resource (name), script (testset).
     """
     normalized_target, address = validate_edit_target(
         target,

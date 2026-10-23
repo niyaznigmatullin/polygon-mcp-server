@@ -10,6 +10,7 @@ EDIT_TARGETS: dict[str, dict[str, tuple[str, ...]]] = {
     "file": {"required": ("type", "name"), "optional": ("source_type",)},
     "solution": {"required": ("name",), "optional": ("source_type",)},
     "statement": {"required": ("lang", "section"), "optional": ()},
+    "statement_resource": {"required": ("name",), "optional": ()},
     "script": {"required": ("testset",), "optional": ()},
 }
 
