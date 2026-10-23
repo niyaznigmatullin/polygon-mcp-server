@@ -679,6 +679,68 @@ def problem_save_statement(
     return _to_jsonable(result)
 
 
+def _rendered_statements_response(
+    rendered: list, kind: str, directory: Optional[str]
+) -> list[dict[str, Any]]:
+    """Report each language's html and pdf render, writing content to directory."""
+    entries = []
+    for item in rendered:
+        entry: dict[str, Any] = {"language": item.language}
+        for fmt in ("html", "pdf"):
+            render = getattr(item, fmt)
+            report = {
+                key: _to_jsonable(value)
+                for key, value in vars(render).items()
+                if key != "content_bytes"
+            }
+            if directory is not None and render.content_bytes is not None:
+                path = os.path.join(directory, f"{kind}-{item.language}.{fmt}")
+                with open(path, "wb") as handle:
+                    handle.write(render.content_bytes)
+                report["saved_to"] = path
+            entry[fmt] = report
+        entries.append(entry)
+    return entries
+
+
+@mcp.tool()
+def problem_render_statements(
+    problem_id: int,
+    output_dir: Optional[str] = None,
+    pin: Optional[str] = None,
+) -> Any:
+    """Render the working copy's statements and tutorials to HTML and PDF.
+
+    Every language gets independent html and pdf results with a status of OK
+    or FAILED; a failed render carries Polygon's message, which is where LaTeX
+    errors show up. Without output_dir only status, size and sha256 come back.
+    With output_dir the rendered files are written there as
+    statement-<lang>.html/.pdf and tutorial-<lang>.html/.pdf, and each result
+    reports its saved_to path.
+    """
+    directory = None
+    if output_dir is not None:
+        directory = _resolve_output_path(output_dir)
+        os.makedirs(directory, exist_ok=True)
+    polygon = _get_client()
+    result = _call_polygon(
+        polygon.problem_render_statements,
+        problem_id,
+        include_content=directory is not None,
+        pin=pin,
+    )
+    return {
+        "revision": result.revision,
+        "rendering_time_seconds": result.rendering_time_seconds,
+        "statements": _rendered_statements_response(
+            result.statements, "statement", directory
+        ),
+        "tutorials": _rendered_statements_response(
+            result.tutorials, "tutorial", directory
+        ),
+    }
+
+
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_statement_resources(problem_id: int, pin: Optional[str] = None) -> Any:
     """List statement resources with their name, length and modification time."""
