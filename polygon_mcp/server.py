@@ -681,9 +681,33 @@ def problem_save_statement(
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
 def problem_statement_resources(problem_id: int, pin: Optional[str] = None) -> Any:
+    """List statement resources with their name, length and modification time."""
     polygon = _get_client()
     result = _call_polygon(polygon.problem_statement_resources, problem_id, pin=pin)
     return _to_jsonable(result)
+
+
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
+def problem_view_statement_resource(
+    problem_id: int,
+    name: str,
+    start_line: Optional[int] = None,
+    line_count: Optional[int] = None,
+    binary: bool = False,
+    pin: Optional[str] = None,
+) -> Any:
+    """Read a statement resource with bounded line pagination.
+
+    Limits match problem_view_file: text must be valid UTF-8, and at most 500
+    lines and 12,000 characters are returned per call. Set binary=true for
+    images and other binary resources to receive the whole file as base64.
+    """
+    polygon = _get_client()
+    data = _call_polygon(
+        polygon.problem_view_statement_resource, problem_id, name, binary=True, pin=pin
+    )
+    _raise_if_polygon_error_payload(data)
+    return _file_content_response(data, start_line, line_count, binary)
 
 
 @mcp.tool()
