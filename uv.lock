@@ -872,19 +872,19 @@ wheels = [
 
 [[package]]
 name = "polygon-api"
-version = "1.1.0"
+version = "1.2.0a1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/e8/6c890a22d8633a182a7260c720a5407571e61319178eb487e1ff7d9cc7b8/polygon_api-1.1.0.tar.gz", hash = "sha256:8563613fcd06bfa6bf7f304c7cba5c833467196ee89dde164c43e758167ce2ba", size = 18396, upload-time = "2026-08-20T07:54:49.068Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/15/22fd6a1283e47abd0f4c54e1c6290fa27034080a7bf65245160ab549bd14/polygon_api-1.2.0a1.tar.gz", hash = "sha256:ee6b3acb2ac7f0f397547a19c4e9feb2931492a7775dee0317d91fc4876c7158", size = 27712, upload-time = "2026-08-24T09:10:09.387Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/43/1d89617671a8771f815ad9980c96e53befc456677ba4c049440fb5af822b/polygon_api-1.1.0-py3-none-any.whl", hash = "sha256:8977fcf132c60a9b55f9d0a57f20b61a88be33ae0973c734777aa56f676e034b", size = 11827, upload-time = "2026-08-20T07:54:47.467Z" },
+    { url = "https://files.pythonhosted.org/packages/21/ad/aaf473ffd7e6ac3f5aa8877e611f790eeb8e5948ca8bb16044065abc6bda/polygon_api-1.2.0a1-py3-none-any.whl", hash = "sha256:a7618ad5b9be39911a4abe83d75031ab6adc935d44355d3996ff8fc28e88cbc6", size = 14008, upload-time = "2026-08-24T09:10:08.298Z" },
 ]
 
 [[package]]
 name = "polygon-mcp-server"
-version = "0.2.0"
+version = "0.3.0a1"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
@@ -896,7 +896,7 @@ dependencies = [
 requires-dist = [
     { name = "fastmcp", specifier = "<3" },
     { name = "httpx", specifier = "<1.0" },
-    { name = "polygon-api", specifier = "==1.1.0" },
+    { name = "polygon-api", specifier = "==1.2.0a1" },
 ]
 
 [[package]]

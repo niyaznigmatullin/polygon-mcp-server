@@ -527,9 +527,9 @@ def problems_list(
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_info(problem_id: int) -> Any:
+def problem_info(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_info, problem_id)
+    result = _call_polygon(polygon.problem_info, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
@@ -548,7 +548,16 @@ def problem_update_info(
     interactive: Optional[bool] = None,
     time_limit: Optional[int] = None,
     memory_limit: Optional[int] = None,
+    well_formed: Optional[bool] = None,
+    skip_duplicated_tests_validation: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
+    """Update problem settings. Use None to leave a field unchanged.
+
+    well_formed toggles Polygon's well-formedness requirement for the problem;
+    skip_duplicated_tests_validation turns off its duplicate-test check. Both
+    of them decide which cautions problem_cautions reports.
+    """
     polygon = _get_client()
     info = ProblemInfo(
         input_file=input_file,
@@ -556,22 +565,24 @@ def problem_update_info(
         interactive=interactive,
         time_limit=time_limit,
         memory_limit=memory_limit,
+        well_formed=well_formed,
+        skip_duplicated_tests_validation=skip_duplicated_tests_validation,
     )
-    result = _call_polygon(polygon.problem_update_info, problem_id, info)
+    result = _call_polygon(polygon.problem_update_info, problem_id, info, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_update_working_copy(problem_id: int) -> Any:
+def problem_update_working_copy(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_update_working_copy, problem_id)
+    result = _call_polygon(polygon.problem_update_working_copy, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_discard_working_copy(problem_id: int) -> Any:
+def problem_discard_working_copy(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_discard_working_copy, problem_id)
+    result = _call_polygon(polygon.problem_discard_working_copy, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
@@ -580,6 +591,7 @@ def problem_commit_changes(
     problem_id: int,
     minor_changes: Optional[bool] = None,
     message: Optional[str] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     polygon = _get_client()
     result = _call_polygon(
@@ -587,6 +599,7 @@ def problem_commit_changes(
         problem_id,
         minor_changes=minor_changes,
         message=message,
+        pin=pin,
     )
     return _to_jsonable(result)
 
@@ -596,14 +609,16 @@ def problem_statements(
     problem_id: int,
     lang: Optional[str] = None,
     fields: Optional[list[str]] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Get problem statements, optionally selecting a language and fields.
 
     fields can include: encoding, name, legend, input, output, scoring,
-    interaction, notes, tutorial.
+    interaction, notes, tutorial, show_in_review,
+    show_cautions_and_grammatical_fixes.
     """
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_statements, problem_id)
+    result = _call_polygon(polygon.problem_statements, problem_id, pin=pin)
     data = _to_jsonable(result)
     if not isinstance(data, dict):
         return data
@@ -634,8 +649,16 @@ def problem_save_statement(
     interaction: Optional[str] = None,
     notes: Optional[str] = None,
     tutorial: Optional[str] = None,
+    show_in_review: Optional[bool] = None,
+    show_cautions_and_grammatical_fixes: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
-    """Save or partially update a statement. Use None to leave fields unchanged."""
+    """Save or partially update a statement. Use None to leave fields unchanged.
+
+    show_in_review and show_cautions_and_grammatical_fixes control whether this
+    language takes part in Polygon's review and whether it collects statement
+    cautions and AI grammar fixes; problem_cautions reports what they produce.
+    """
     polygon = _get_client()
     statement = Statement(
         encoding=encoding,
@@ -647,15 +670,19 @@ def problem_save_statement(
         interaction=interaction,
         notes=notes,
         tutorial=tutorial,
+        show_in_review=show_in_review,
+        show_cautions_and_grammatical_fixes=show_cautions_and_grammatical_fixes,
     )
-    result = _call_polygon(polygon.problem_save_statement, problem_id, lang, statement)
+    result = _call_polygon(
+        polygon.problem_save_statement, problem_id, lang, statement, pin=pin
+    )
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_statement_resources(problem_id: int) -> Any:
+def problem_statement_resources(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_statement_resources, problem_id)
+    result = _call_polygon(polygon.problem_statement_resources, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
@@ -667,6 +694,7 @@ def problem_save_statement_resource(
     content_base64: bool = False,
     local_path: Optional[str] = None,
     check_existing: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     polygon = _get_client()
     if local_path:
@@ -681,22 +709,27 @@ def problem_save_statement_resource(
         name,
         file_value,
         check_existing=check_existing,
+        pin=pin,
     )
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_checker(problem_id: int) -> Any:
+def problem_checker(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_checker, problem_id)
+    result = _call_polygon(polygon.problem_checker, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_checker_tests(problem_id: int) -> Any:
-    """List checker tests and their expected verdicts."""
+def problem_checker_tests(problem_id: int, pin: Optional[str] = None) -> Any:
+    """List checker tests, their expected verdicts and the last run result.
+
+    run_verdict and run_comment describe what the checker actually did on the
+    test the last time Polygon ran it; they are empty until it has been run.
+    """
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_checker_tests, problem_id)
+    result = _call_polygon(polygon.problem_checker_tests, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
@@ -710,6 +743,7 @@ def problem_save_checker_test(
     test_verdict: Optional[str] = None,
     check_existing: Optional[bool] = None,
     raw: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Add or update a checker test.
 
@@ -733,22 +767,27 @@ def problem_save_checker_test(
         test_answer=test_answer,
         test_verdict=verdict,
         check_existing=check_existing,
+        pin=pin,
     )
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_validator(problem_id: int) -> Any:
+def problem_validator(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_validator, problem_id)
+    result = _call_polygon(polygon.problem_validator, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_validator_tests(problem_id: int) -> Any:
-    """List validator tests and their expected verdicts."""
+def problem_validator_tests(problem_id: int, pin: Optional[str] = None) -> Any:
+    """List validator tests, their expected verdicts and the last run result.
+
+    run_verdict and run_comment describe what the validator actually did on the
+    test the last time Polygon ran it; they are empty until it has been run.
+    """
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_validator_tests, problem_id)
+    result = _call_polygon(polygon.problem_validator_tests, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
@@ -762,6 +801,7 @@ def problem_save_validator_test(
     testset: Optional[str] = None,
     check_existing: Optional[bool] = None,
     raw: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Add or update a validator test.
 
@@ -783,42 +823,47 @@ def problem_save_validator_test(
         test_group=test_group,
         testset=testset,
         check_existing=check_existing,
+        pin=pin,
     )
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_interactor(problem_id: int) -> Any:
+def problem_interactor(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_interactor, problem_id)
+    result = _call_polygon(polygon.problem_interactor, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_set_validator(problem_id: int, validator: str) -> Any:
+def problem_set_validator(
+    problem_id: int, validator: str, pin: Optional[str] = None
+) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_set_validator, problem_id, validator)
+    result = _call_polygon(polygon.problem_set_validator, problem_id, validator, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_set_checker(problem_id: int, checker: str) -> Any:
+def problem_set_checker(problem_id: int, checker: str, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_set_checker, problem_id, checker)
+    result = _call_polygon(polygon.problem_set_checker, problem_id, checker, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_set_interactor(problem_id: int, interactor: str) -> Any:
+def problem_set_interactor(
+    problem_id: int, interactor: str, pin: Optional[str] = None
+) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_set_interactor, problem_id, interactor)
+    result = _call_polygon(polygon.problem_set_interactor, problem_id, interactor, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_files(problem_id: int) -> Any:
+def problem_files(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_files, problem_id)
+    result = _call_polygon(polygon.problem_files, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
@@ -830,6 +875,7 @@ def problem_view_file(
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
     binary: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Read a problem file with bounded line pagination.
 
@@ -840,7 +886,7 @@ def problem_view_file(
     polygon = _get_client()
     file_type = _parse_file_type(type)
     data = _call_polygon(
-        polygon.problem_view_file, problem_id, file_type, name, binary=True
+        polygon.problem_view_file, problem_id, file_type, name, binary=True, pin=pin
     )
     return _file_content_response(data, start_line, line_count, binary)
 
@@ -854,6 +900,7 @@ def problem_search_file(
     before: int = 5,
     after: int = 15,
     max_matches: int = MAX_FILE_SEARCH_MATCHES,
+    pin: Optional[str] = None,
 ) -> Any:
     """Search a UTF-8 problem file without returning the whole file.
 
@@ -864,7 +911,7 @@ def problem_search_file(
     polygon = _get_client()
     file_type = _parse_file_type(type)
     data = _call_polygon(
-        polygon.problem_view_file, problem_id, file_type, name, binary=True
+        polygon.problem_view_file, problem_id, file_type, name, binary=True, pin=pin
     )
     return _search_file_content(data, query, before, after, max_matches)
 
@@ -879,6 +926,7 @@ def problem_save_file(
     local_path: Optional[str] = None,
     source_type: Optional[str] = None,
     resource_advanced_properties: Optional[dict] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Add or edit a file (source, resource, attachment, etc.).
 
@@ -910,30 +958,42 @@ def problem_save_file(
         file_value,
         source_type=source_type,
         resource_advanced_properties=adv,
+        pin=pin,
     )
     return _to_jsonable(result)
 
 
 def _read_edit_target(
-    polygon, problem_id: int, target: str, address: dict[str, str]
+    polygon,
+    problem_id: int,
+    target: str,
+    address: dict[str, str],
+    pin: Optional[str] = None,
 ) -> tuple[str, str]:
     if target == "file":
         file_type = _parse_file_type(address["type"])
         data = _call_polygon(
-            polygon.problem_view_file, problem_id, file_type, address["name"], binary=True
+            polygon.problem_view_file,
+            problem_id,
+            file_type,
+            address["name"],
+            binary=True,
+            pin=pin,
         )
         return _decode_file_content(data), f'{file_type}/{address["name"]}'
     if target == "solution":
         data = _call_polygon(
-            polygon.problem_view_solution, problem_id, address["name"], binary=True
+            polygon.problem_view_solution, problem_id, address["name"], binary=True, pin=pin
         )
         return _decode_file_content(data), f'solution {address["name"]}'
     if target == "script":
-        source = _call_polygon(polygon.problem_script, problem_id, address["testset"])
+        source = _call_polygon(
+            polygon.problem_script, problem_id, address["testset"], pin=pin
+        )
         return source or "", f'script {address["testset"]}'
 
     section_key = _normalize_statement_section(address["section"])
-    statements = _call_polygon(polygon.problem_statements, problem_id)
+    statements = _call_polygon(polygon.problem_statements, problem_id, pin=pin)
     statement = statements.get(address["lang"]) if isinstance(statements, dict) else None
     if statement is None:
         raise ValueError(f'Statement not found for lang: {address["lang"]}')
@@ -942,7 +1002,12 @@ def _read_edit_target(
 
 
 def _save_edit_target(
-    polygon, problem_id: int, target: str, address: dict[str, str], updated: str
+    polygon,
+    problem_id: int,
+    target: str,
+    address: dict[str, str],
+    updated: str,
+    pin: Optional[str] = None,
 ) -> Any:
     if target == "file":
         file_type = _parse_file_type(address["type"])
@@ -953,6 +1018,7 @@ def _save_edit_target(
             address["name"],
             updated,
             source_type=address.get("source_type"),
+            pin=pin,
         )
     if target == "solution":
         return _call_polygon(
@@ -962,10 +1028,11 @@ def _save_edit_target(
             updated,
             None,
             source_type=address.get("source_type"),
+            pin=pin,
         )
     if target == "script":
         return _call_polygon(
-            polygon.problem_save_script, problem_id, address["testset"], updated
+            polygon.problem_save_script, problem_id, address["testset"], updated, pin=pin
         )
 
     section_key = _normalize_statement_section(address["section"])
@@ -974,6 +1041,7 @@ def _save_edit_target(
         problem_id,
         address["lang"],
         Statement(**{section_key: updated}),
+        pin=pin,
     )
 
 
@@ -990,6 +1058,7 @@ def problem_edit(
     section: Optional[str] = None,
     testset: Optional[str] = None,
     source_type: Optional[str] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Replace an exact string in a problem's text content and save it back.
 
@@ -1010,22 +1079,24 @@ def problem_edit(
         },
     )
     polygon = _get_client()
-    current, label = _read_edit_target(polygon, problem_id, normalized_target, address)
+    current, label = _read_edit_target(
+        polygon, problem_id, normalized_target, address, pin
+    )
     if "\x00" in current:
         raise ValueError("Content appears to be binary; edits are not supported")
     updated, spans = apply_string_edit(
         current, old_string, new_string, replace_all, label
     )
     api_result = _save_edit_target(
-        polygon, problem_id, normalized_target, address, updated
+        polygon, problem_id, normalized_target, address, updated, pin
     )
     return build_edit_response(label, current, updated, spans, _to_jsonable(api_result))
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_solutions(problem_id: int) -> Any:
+def problem_solutions(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_solutions, problem_id)
+    result = _call_polygon(polygon.problem_solutions, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
@@ -1036,6 +1107,7 @@ def problem_view_solution(
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
     binary: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Read a solution with bounded line pagination.
 
@@ -1045,7 +1117,7 @@ def problem_view_solution(
     """
     polygon = _get_client()
     data = _call_polygon(
-        polygon.problem_view_solution, problem_id, name, binary=True
+        polygon.problem_view_solution, problem_id, name, binary=True, pin=pin
     )
     return _file_content_response(data, start_line, line_count, binary)
 
@@ -1060,6 +1132,7 @@ def problem_save_solution(
     content_base64: bool = False,
     local_path: Optional[str] = None,
     check_existing: Optional[bool] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Add or edit a solution.
 
@@ -1089,6 +1162,7 @@ def problem_save_solution(
         tag,
         source_type=source_type,
         check_existing=check_existing,
+        pin=pin,
     )
     return _to_jsonable(result)
 
@@ -1101,6 +1175,7 @@ def problem_tests(
     fields: Optional[list[str]] = None,
     input_line_limit: Optional[int] = None,
     examples_only: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """List tests for a testset, optionally selecting fields.
 
@@ -1114,7 +1189,9 @@ def problem_tests(
     if no_inputs is not True:
         raise ValueError("problem_tests requires no_inputs=true; use problem_test_input to fetch test input")
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_tests, problem_id, testset, no_inputs=no_inputs)
+    result = _call_polygon(
+        polygon.problem_tests, problem_id, testset, no_inputs=no_inputs, pin=pin
+    )
     data = _to_jsonable(result)
     if examples_only and isinstance(data, list):
         data = [item for item in data if item.get("use_in_statements") is True]
@@ -1149,6 +1226,7 @@ def problem_test_answer(
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
     binary: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Get generated test answer for a test.
 
@@ -1163,6 +1241,7 @@ def problem_test_answer(
         testset,
         test_index,
         binary=True,
+        pin=pin,
     )
     if output_path:
         if start_line is not None or line_count is not None or binary:
@@ -1185,6 +1264,7 @@ def problem_test_input(
     start_line: Optional[int] = None,
     line_count: Optional[int] = None,
     binary: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Get generated test input for a test.
 
@@ -1199,6 +1279,7 @@ def problem_test_input(
         testset,
         test_index,
         binary=True,
+        pin=pin,
     )
     if output_path:
         if start_line is not None or line_count is not None or binary:
@@ -1227,6 +1308,7 @@ def problem_save_test(
     verify_input_output_for_statements: Optional[bool] = None,
     check_existing: Optional[bool] = None,
     test_input_base64: bool = False,
+    pin: Optional[str] = None,
 ) -> Any:
     """Save or update a test.
 
@@ -1251,31 +1333,36 @@ def problem_save_test(
         test_output_for_statements=test_output_for_statements,
         verify_input_output_for_statements=verify_input_output_for_statements,
         check_existing=check_existing,
+        pin=pin,
     )
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_script(problem_id: int, testset: str) -> Any:
+def problem_script(problem_id: int, testset: str, pin: Optional[str] = None) -> Any:
     """Get the test generation script for a testset.
 
     The script uses Freemarker-like syntax and references generators (source files)
     to produce tests. Each non-empty line in the script corresponds to a generated test.
     """
     polygon = _get_client()
-    data = _call_polygon(polygon.problem_script, problem_id, testset)
+    data = _call_polygon(polygon.problem_script, problem_id, testset, pin=pin)
     return {"data": data}
 
 
 @mcp.tool()
-def problem_save_script(problem_id: int, testset: str, source: str) -> Any:
+def problem_save_script(
+    problem_id: int, testset: str, source: str, pin: Optional[str] = None
+) -> Any:
     """Save or update the test generation script for a testset.
 
     The source is the full script content. Each non-empty line typically calls
     a generator, e.g. 'gen 10 20 > $' or uses Freemarker syntax.
     """
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_save_script, problem_id, testset, source)
+    result = _call_polygon(
+        polygon.problem_save_script, problem_id, testset, source, pin=pin
+    )
     return _to_jsonable(result)
 
 
@@ -1286,6 +1373,7 @@ def problem_set_test_group(
     test_group: str,
     test_index: Optional[int] = None,
     test_indices: Optional[list[int]] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Assign tests to a test group.
 
@@ -1302,21 +1390,26 @@ def problem_set_test_group(
         test_group,
         test_index=test_index,
         test_indices=test_indices,
+        pin=pin,
     )
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_enable_groups(problem_id: int, testset: str, enable: bool) -> Any:
+def problem_enable_groups(
+    problem_id: int, testset: str, enable: bool, pin: Optional[str] = None
+) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_enable_groups, problem_id, testset, enable)
+    result = _call_polygon(
+        polygon.problem_enable_groups, problem_id, testset, enable, pin=pin
+    )
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_enable_points(problem_id: int, enable: bool) -> Any:
+def problem_enable_points(problem_id: int, enable: bool, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_enable_points, problem_id, enable)
+    result = _call_polygon(polygon.problem_enable_points, problem_id, enable, pin=pin)
     return _to_jsonable(result)
 
 
@@ -1325,10 +1418,13 @@ def problem_view_test_group(
     problem_id: int,
     testset: str,
     group: Optional[str] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """View a test group, or all groups of the testset when group is omitted."""
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_view_test_group, problem_id, testset, group)
+    result = _call_polygon(
+        polygon.problem_view_test_group, problem_id, testset, group, pin=pin
+    )
     return _to_jsonable(result)
 
 
@@ -1340,6 +1436,7 @@ def problem_save_test_group(
     points_policy: Optional[str] = None,
     feedback_policy: Optional[str] = None,
     dependencies: Optional[list] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Save or update a test group.
 
@@ -1357,64 +1454,73 @@ def problem_save_test_group(
         points_policy=points_policy_enum,
         feedback_policy=feedback_policy_enum,
         dependencies=dependencies,
+        pin=pin,
     )
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_view_tags(problem_id: int) -> Any:
+def problem_view_tags(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_view_tags, problem_id)
+    result = _call_polygon(polygon.problem_view_tags, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_save_tags(problem_id: int, tags: list[str]) -> Any:
+def problem_save_tags(problem_id: int, tags: list[str], pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_save_tags, problem_id, tags)
+    result = _call_polygon(polygon.problem_save_tags, problem_id, tags, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_view_general_description(problem_id: int) -> Any:
+def problem_view_general_description(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_view_general_description, problem_id)
+    result = _call_polygon(polygon.problem_view_general_description, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_save_general_description(problem_id: int, description: str) -> Any:
+def problem_save_general_description(
+    problem_id: int, description: str, pin: Optional[str] = None
+) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_save_general_description, problem_id, description)
+    result = _call_polygon(
+        polygon.problem_save_general_description, problem_id, description, pin=pin
+    )
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_view_general_tutorial(problem_id: int) -> Any:
+def problem_view_general_tutorial(problem_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_view_general_tutorial, problem_id)
+    result = _call_polygon(polygon.problem_view_general_tutorial, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool()
-def problem_save_general_tutorial(problem_id: int, tutorial: str) -> Any:
+def problem_save_general_tutorial(
+    problem_id: int, tutorial: str, pin: Optional[str] = None
+) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_save_general_tutorial, problem_id, tutorial)
+    result = _call_polygon(
+        polygon.problem_save_general_tutorial, problem_id, tutorial, pin=pin
+    )
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def contest_problems(contest_id: int) -> Any:
+def contest_problems(contest_id: int, pin: Optional[str] = None) -> Any:
     polygon = _get_client()
-    result = _call_polygon(polygon.contest_problems, contest_id)
+    result = _call_polygon(polygon.contest_problems, contest_id, pin=pin)
     return _to_jsonable(result)
 
 
 @mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
-def problem_packages(problem_id: int) -> Any:
+def problem_packages(problem_id: int, pin: Optional[str] = None) -> Any:
     """List packages available for the problem."""
     polygon = _get_client()
-    result = _call_polygon(polygon.problem_packages, problem_id)
+    result = _call_polygon(polygon.problem_packages, problem_id, pin=pin)
     return _to_jsonable(result)
 
 
@@ -1424,6 +1530,7 @@ def problem_package(
     package_id: int,
     output_path: str,
     type: Optional[str] = None,
+    pin: Optional[str] = None,
 ) -> Any:
     """Download a built package archive to a local file.
 
@@ -1441,6 +1548,7 @@ def problem_package(
         problem_id,
         package_id,
         type=requested_type,
+        pin=pin,
     )
     if not isinstance(data, (bytes, bytearray)):
         raise TypeError(
@@ -1453,14 +1561,41 @@ def problem_package(
     return {"saved_to": path, "size_bytes": len(raw), "type": requested_type}
 
 
+@mcp.tool(annotations=READ_ONLY_TOOL_ANNOTATIONS)
+def problem_cautions(
+    problem_id: int,
+    include_ai: bool = False,
+    pin: Optional[str] = None,
+) -> Any:
+    """List what Polygon thinks is wrong or risky about the problem.
+
+    Returns four buckets of cautions - common, statement, structure, issues -
+    where each caution has a type, a severity of SOFT or HARD, a category, a
+    message and its parameters; plus package_readiness_issues, which block
+    building a package, and latest_package_warnings from the last build.
+
+    Polygon's cached "correction tips from AI" are left out by default: they
+    carry whole statement rewrites and source reviews. Pass include_ai=true to
+    get them under the "ai" key.
+    """
+    polygon = _get_client()
+    result = _call_polygon(polygon.problem_cautions, problem_id, pin=pin)
+    data = _to_jsonable(result)
+    if not include_ai and isinstance(data, dict):
+        data.pop("ai", None)
+    return data
+
+
 @mcp.tool()
-def problem_build_package(problem_id: int, full: bool, verify: bool) -> Any:
+def problem_build_package(
+    problem_id: int, full: bool, verify: bool, pin: Optional[str] = None
+) -> Any:
     """Start building a new package."""
     if full:
         raise ValueError("full packages are disabled; set full=false")
     polygon = _get_client()
     result = _call_polygon(
-        polygon.problem_build_package, problem_id, verify=verify, full=full
+        polygon.problem_build_package, problem_id, verify=verify, full=full, pin=pin
     )
     return _to_jsonable(result)
 

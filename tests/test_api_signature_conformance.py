@@ -145,6 +145,36 @@ class ApiSignatureConformanceTests(unittest.TestCase):
                         f"{site}: keyword '{name}' is filled from '{node.id}'",
                     )
 
+    def test_installed_client_has_the_1_2_surface(self) -> None:
+        """The pin below is a pre-release; fail loudly when the old client is installed."""
+        self.assertTrue(
+            hasattr(Polygon, "problem_cautions"),
+            "polygon_api is older than 1.2.0a1: no Polygon.problem_cautions",
+        )
+        self.assertIn(
+            "pin",
+            inspect.signature(Polygon.problem_info).parameters,
+            "polygon_api is older than 1.2.0a1: problem_info takes no pin",
+        )
+
+    def test_pin_is_forwarded_wherever_the_api_accepts_it(self) -> None:
+        """A pin-aware API method must never be called without pin.
+
+        Polygon rejects requests to a pin-protected problem when the pin is
+        missing, and a tool that silently drops it is unusable on such a
+        problem.  This catches the one call site somebody forgot.
+        """
+        for site in self.sites:
+            params = _api_parameters(site.method)
+            if params is None or "pin" not in params:
+                continue
+            with self.subTest(site=str(site)):
+                self.assertIn(
+                    "pin",
+                    {name for name, _ in site.keywords},
+                    f"{site}: the API accepts pin but this call site drops it",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

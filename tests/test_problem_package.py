@@ -37,7 +37,7 @@ class ProblemPackageTests(unittest.TestCase):
         result, call_polygon = self._invoke(archive)
 
         call_polygon.assert_called_once_with(
-            self.client.problem_package, 42, 7, type=None
+            self.client.problem_package, 42, 7, type=None, pin=None
         )
         self.assertEqual(
             result,
