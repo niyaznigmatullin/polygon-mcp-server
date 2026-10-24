@@ -128,6 +128,43 @@ class ProblemEditToolTests(unittest.TestCase):
         )
         self.assertEqual(response["target"], "script tests")
 
+    def test_statement_resource_edit_reads_and_saves_resource(self) -> None:
+        self.client.problem_view_statement_resource.return_value = (
+            b"\\def\\Title{Old}\n"
+        )
+        self.client.problem_save_statement_resource.return_value = None
+
+        response = self._edit(
+            problem_id=7, target="statement_resource", name="olymp.sty",
+            old_string="Old", new_string="New",
+        )
+
+        self.assertEqual(
+            self.client.problem_view_statement_resource.call_args.args, (7, "olymp.sty")
+        )
+        self.assertIs(
+            self.client.problem_view_statement_resource.call_args.kwargs["binary"], True
+        )
+        self.assertEqual(
+            self.client.problem_save_statement_resource.call_args.args,
+            (7, "olymp.sty", "\\def\\Title{New}\n"),
+        )
+        self.assertEqual(response["target"], "statement resource olymp.sty")
+
+    def test_statement_resource_edit_surfaces_polygon_failure(self) -> None:
+        self.client.problem_view_statement_resource.return_value = (
+            b'{"status":"FAILED","comment":"name: Resource not found"}'
+        )
+
+        with self.assertRaises(RuntimeError) as ctx:
+            self._edit(
+                problem_id=7, target="statement_resource", name="missing.sty",
+                old_string="a", new_string="b",
+            )
+
+        self.assertIn("Resource not found", str(ctx.exception))
+        self.client.problem_save_statement_resource.assert_not_called()
+
     def test_rejects_binary_content(self) -> None:
         self.client.problem_view_file.return_value = b"\x00\x01binary"
 

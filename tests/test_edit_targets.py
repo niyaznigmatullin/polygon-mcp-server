@@ -30,7 +30,9 @@ class ValidateEditTargetTests(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             validate_edit_target("checker", dict(NO_ADDRESS))
         self.assertIn("Unknown target 'checker'", str(ctx.exception))
-        self.assertIn("file, script, solution, statement", str(ctx.exception))
+        self.assertIn(
+            "file, script, solution, statement, statement_resource", str(ctx.exception)
+        )
 
     def test_rejects_missing_required_parameter(self) -> None:
         with self.assertRaises(ValueError) as ctx:

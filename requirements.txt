@@ -1,2 +1,2 @@
-polygon_api==1.2.0a1
+polygon_api==1.2.0
 fastmcp<3

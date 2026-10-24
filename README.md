@@ -5,7 +5,7 @@ MCP server for Polygon API (Codeforces Polygon).
 ## Requirements
 
 - Python 3.10+
-- `polygon_api==1.2.0a1`
+- `polygon_api==1.2.0`
 
 ## Install
 
