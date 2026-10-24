@@ -1412,16 +1412,21 @@ def problem_save_test(
     verify_input_output_for_statements: Optional[bool] = None,
     check_existing: Optional[bool] = None,
     test_input_base64: bool = False,
+    local_path: Optional[str] = None,
     pin: Optional[str] = None,
 ) -> Any:
     """Save or update a test.
 
-    test_input is optional when editing; omit it to keep the existing test input
-    and update only metadata (group/points/description/statement fields).
+    test_input/local_path: input or path to a file with it, mutually exclusive.
+    Omit both when editing to keep the existing input and update only metadata.
     """
     polygon = _get_client()
+    if local_path and test_input is not None:
+        raise ValueError("test_input and local_path are mutually exclusive")
     input_value = None
-    if test_input is not None:
+    if local_path:
+        input_value = _read_local_file(local_path)
+    elif test_input is not None:
         input_value = _decode_content(test_input, test_input_base64)
     result = _call_polygon(
         polygon.problem_save_test,
